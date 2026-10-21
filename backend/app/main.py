@@ -650,6 +650,8 @@ def listar_ajustes_inventario(db: Session = Depends(get_db)):
     return db.query(DBAjusteInventario).order_by(DBAjusteInventario.id.desc()).all()
 
 @app.post("/api/inventario/ajustes")
+@app.post("/api/wms/ajuste-stock")
+@app.post("/api/wms/ajustes")
 def crear_ajuste_inventario(a: AjusteInventarioCreate, db: Session = Depends(get_db)):
     prod = db.query(DBProductoWMS).filter(DBProductoWMS.id == a.producto_id).first()
     if not prod:
@@ -685,9 +687,10 @@ def crear_ajuste_inventario(a: AjusteInventarioCreate, db: Session = Depends(get
 # 1.3 GASTOS DE TIENDA & OPERATIVOS
 # ==========================================
 class GastoTiendaCreate(BaseModel):
-    categoria: str # PACKAGING, ETIQUETAS, OPERATIVO, ENVIOS, OTROS
-    concepto: str
-    monto: float
+    categoria: str = "OPERATIVO"
+    concepto: Optional[str] = None
+    descripcion: Optional[str] = None
+    monto: float = 0.0
     responsable: Optional[str] = "Administración"
     comprobante_url: Optional[str] = ""
     notas: Optional[str] = ""
@@ -698,7 +701,12 @@ def listar_gastos(db: Session = Depends(get_db)):
 
 @app.post("/api/gastos")
 def crear_gasto(g: GastoTiendaCreate, db: Session = Depends(get_db)):
-    nuevo = DBGastoTienda(**g.dict())
+    data = g.dict()
+    conc = data.get("concepto") or data.get("descripcion") or "Gasto Operativo"
+    data["concepto"] = conc
+    if "descripcion" in data:
+        del data["descripcion"]
+    nuevo = DBGastoTienda(**data)
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
@@ -1059,6 +1067,7 @@ class EstadoCierreRequest(BaseModel):
     estado: str # VENDIDO, RESUELTO, PERDIDO, SEGUIMIENTO
     nota: Optional[str] = ""
 
+@app.put("/api/crm/chats/{chat_id}/estado")
 @app.put("/api/crm/chats/{chat_id}/estado-cierre")
 def actualizar_estado_cierre_crm(chat_id: int, req: EstadoCierreRequest, db: Session = Depends(get_db)):
     chat = db.query(DBChatLead).filter(DBChatLead.id == chat_id).first()
@@ -2041,6 +2050,24 @@ def crear_ticket(t: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(nuevo)
     return nuevo
 
+
+class TicketEstadoUpdate(BaseModel):
+    estado: str = "RESUELTO"
+    respuesta_lider: Optional[str] = ""
+
+@app.put("/api/tickets/{ticket_id}/estado")
+def actualizar_estado_ticket(ticket_id: int, req: TicketEstadoUpdate, db: Session = Depends(get_db)):
+    t = db.query(DBTicket).filter(DBTicket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    t.estado = req.estado
+    if req.respuesta_lider:
+        t.respuesta_lider = req.respuesta_lider
+    elif req.estado == "RESUELTO" and not t.respuesta_lider:
+        t.respuesta_lider = f"Resuelto por Isaac el {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    db.commit()
+    return t
+
 @app.put("/api/tickets/{ticket_id}/resolver")
 def resolver_ticket(ticket_id: int, db: Session = Depends(get_db)):
     t = db.query(DBTicket).filter(DBTicket.id == ticket_id).first()
@@ -2164,6 +2191,7 @@ def obtener_reporte_general(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/reportes/exportar-excel")
+@app.get("/api/reportes/excel/descargar")
 def exportar_reporte_excel(db: Session = Depends(get_db)):
     facturas = db.query(DBFactura).order_by(DBFactura.fecha.desc()).all()
     productos = db.query(DBProductoWMS).order_by(DBProductoWMS.id.desc()).all()
