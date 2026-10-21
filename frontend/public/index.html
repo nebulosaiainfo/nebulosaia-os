@@ -94,6 +94,7 @@
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Usuario o Cédula</label>
           <div class="relative">
             <input type="text" id="login-username" autocomplete="username" placeholder="Usuario (ej: isanchez o tu PIN)"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();ejecutarLogin(event);}"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">👤</span>
           </div>
@@ -103,6 +104,7 @@
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Contraseña o PIN Maestro</label>
           <div class="relative">
             <input type="password" id="login-password" autocomplete="current-password" placeholder="Contraseña o PIN Maestro"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();ejecutarLogin(event);}"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">🔑</span>
           </div>
@@ -111,9 +113,9 @@
         <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center transition-all duration-300">
         </div>
 
-        <button type="submit" id="btn-submit-login"
+        <button type="submit" id="btn-submit-login" onclick="ejecutarLogin(event)"
           class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-sm shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2">
-          <span>🚀 Ingresar al Sistema</span>
+          <span>🔑 Ingresar al Sistema</span>
         </button>
       </form>
 
@@ -3224,8 +3226,11 @@
       try { localStorage.setItem('nebulosa_modules_config', JSON.stringify(userModulesConfig)); } catch(e){}
     }
 
+    let isLoggingInProcess = false;
     window.ejecutarLogin = async function(e) {
       if (e && e.preventDefault) e.preventDefault();
+      if (isLoggingInProcess) return;
+      isLoggingInProcess = true;
       const uEl = document.getElementById('login-username');
       const pEl = document.getElementById('login-password');
       const errBox = document.getElementById('login-error-msg');
@@ -3346,13 +3351,12 @@
           errBox.classList.remove('hidden');
         }
       } finally {
+        isLoggingInProcess = false;
         clearTimeout(wakeupTimer);
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = "<span>🔑 Ingresar al Sistema</span>";
         }
-      }
-    };
       }
     };
 
@@ -4667,8 +4671,6 @@
 
     // posponerAlarmaPrompt is handled via window.posponerAlarmaPrompt modal
 
-    }
-
     async function marcarAlarmaAtendida(id) {
       await fetch(`${API_BASE}/api/proformas/${id}/alarma`, {
         method: "PUT",
@@ -4876,13 +4878,6 @@
         }
       } catch (e) {
         mostrarToast("Error de conexión al servidor FastAPI.", 'error');
-      }
-    } else {
-          const err = await res.json();
-          alert(err.detail || "Error al crear apartado");
-        }
-      } catch (e) {
-        alert("Error de conexión al servidor");
       }
     }
 
