@@ -1675,6 +1675,15 @@ def descargar_proforma_pdf(prof_id: int, db: Session = Depends(get_db)):
     ruta = resolver_ruta_pdf_proforma(prof, db)
     return FileResponse(ruta, media_type="application/pdf", filename=f"Proforma_{prof.consecutivo}.pdf")
 
+@app.delete("/api/proformas/{prof_id}")
+def eliminar_proforma(prof_id: int, db: Session = Depends(get_db)):
+    prof = db.query(DBProformaSeguimiento).filter(DBProformaSeguimiento.id == prof_id).first()
+    if not prof:
+        raise HTTPException(status_code=404, detail="Proforma no encontrada")
+    db.delete(prof)
+    db.commit()
+    return {"status": "success", "message": f"Proforma {prof.consecutivo} eliminada correctamente"}
+
 # ==========================================
 # 6. SISTEMA DE APARTADOS Y PAGOS A CUOTAS
 # ==========================================
@@ -1829,6 +1838,31 @@ def registrar_abono_apartado(apartado_id: int, req: RegistrarAbonoRequest, db: S
         "saldo_pendiente": apt.saldo_pendiente,
         "estado": apt.estado
     }
+
+@app.delete("/api/apartados/{apartado_id}")
+def eliminar_apartado(apartado_id: int, db: Session = Depends(get_db)):
+    apt = db.query(DBApartado).filter(DBApartado.id == apartado_id).first()
+    if not apt:
+        raise HTTPException(status_code=404, detail="Apartado no encontrado")
+    if apt.estado != "LIQUIDADO":
+        try:
+            items = json.loads(apt.items_json or "[]")
+            for i in items:
+                prod = db.query(DBProductoWMS).filter(DBProductoWMS.id == i.get("id")).first()
+                if prod:
+                    qty = i.get("cantidad", 1)
+                    if prod.stock_apartado >= qty:
+                        prod.stock_apartado -= qty
+                    prod.stock += qty
+        except Exception:
+            pass
+    try:
+        db.query(DBApartadoCuota).filter(DBApartadoCuota.apartado_id == apartado_id).delete()
+    except Exception:
+        pass
+    db.delete(apt)
+    db.commit()
+    return {"status": "success", "message": f"Apartado {apt.consecutivo} cancelado y eliminado correctamente"}
 
 # ==========================================
 # 7. DATOS Y CONFIGURACIÓN FISCAL

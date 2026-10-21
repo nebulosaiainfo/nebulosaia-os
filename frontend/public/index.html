@@ -2258,9 +2258,611 @@
     </div>
   </div>
 
+  
+
+  <!-- ======================================================== -->
+  <!-- 🔔 TOAST CONTAINER FLOTANTE PARA MENSAJES EN PANTALLA    -->
+  <!-- ======================================================== -->
+  <div id="toast-container" class="fixed top-5 right-5 z-[99999] space-y-2 pointer-events-none"></div>
+
+
+  <!-- ======================================================== -->
+  <!-- 🛡️ MODAL DE CONFIRMACIÓN ELEGANTE (SIN PROMPTS DEL NAVEGADOR) -->
+  <!-- ======================================================== -->
+  <div id="modal-confirmacion-accion" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-sm w-full p-6 rounded-3xl border border-red-500/40 text-center space-y-4 modal-animated-card shadow-2xl">
+      <div id="confirm-icon" class="w-14 h-14 mx-auto rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center text-2xl font-bold shadow-lg shadow-red-500/20">
+        ⚠️
+      </div>
+      <div>
+        <h3 id="confirm-titulo" class="text-sm font-extrabold text-white">¿Confirmar Acción?</h3>
+        <p id="confirm-mensaje" class="text-xs text-slate-400 mt-1">Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="flex gap-2.5 pt-2">
+        <button type="button" id="confirm-btn-cancelar" onclick="cerrarModalConfirmacion(false)" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition">
+          Cancelar
+        </button>
+        <button type="button" id="confirm-btn-aceptar" onclick="cerrarModalConfirmacion(true)" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 transition">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- ⏰ MODAL: POSPONER / REPROGRAMAR ALARMA DE PROFORMA      -->
+  <!-- ======================================================== -->
+  <div id="modal-posponer-alarma" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full p-6 rounded-3xl border border-purple-500/40 space-y-4 modal-animated-card shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-xl font-bold border border-purple-500/30">
+            ⏰
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-white">Reprogramar Alarma</h3>
+            <p id="alarma-proforma-info" class="text-xs text-cyan-300 font-mono font-bold">PRF-00001 • Cliente</p>
+          </div>
+        </div>
+        <button onclick="cerrarModalPosponerAlarma()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="alarma-proforma-id" />
+
+      <!-- CHIPS DE ACCESO RÁPIDO -->
+      <div class="space-y-1.5">
+        <label class="text-[10px] font-bold text-slate-400 uppercase block">Atajos Rápidos de Tiempo:</label>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button type="button" onclick="setPresetAlarmaHoras(1)" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-400 text-left transition flex items-center justify-between">
+            <span class="font-bold text-white">⚡ En 1 Hora</span>
+            <span class="text-[10px] text-purple-400 font-mono">+1h</span>
+          </button>
+          <button type="button" onclick="setPresetAlarmaHoras(3)" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-400 text-left transition flex items-center justify-between">
+            <span class="font-bold text-white">⚡ En 3 Horas</span>
+            <span class="text-[10px] text-purple-400 font-mono">+3h</span>
+          </button>
+          <button type="button" onclick="setPresetAlarmaManana()" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-cyan-400 text-left transition flex items-center justify-between">
+            <span class="font-bold text-cyan-300">🌅 Mañana 9:00 AM</span>
+            <span class="text-[10px] text-cyan-400 font-mono">09:00</span>
+          </button>
+          <button type="button" onclick="setPresetAlarmaDias(7)" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-400 text-left transition flex items-center justify-between">
+            <span class="font-bold text-emerald-300">🎯 En 7 Días</span>
+            <span class="text-[10px] text-emerald-400 font-mono">+7d</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SELECTOR DE FECHA Y HORA PERSONALIZADA -->
+      <div class="space-y-1.5">
+        <label class="text-[10px] font-bold text-slate-400 uppercase block">O Selecciona Fecha y Hora Personalizada:</label>
+        <div class="relative">
+          <input type="datetime-local" id="alarma-custom-datetime" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-purple-400 transition" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+        <button type="button" onclick="cerrarModalPosponerAlarma()" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-bold transition">
+          Cancelar
+        </button>
+        <button type="button" onclick="guardarNuevaAlarmaReal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition flex items-center gap-2">
+          <span>⏰ Guardar Alarma</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+<!-- ======================================================== -->
+  <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <span>🧩</span> Prioridad & Modularidad del Sistema
+          </h3>
+          <p class="text-xs text-slate-400">Organiza qué módulos ves primero según la prioridad de tu jornada.</p>
+        </div>
+        <button onclick="cerrarModalModular()" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <div id="lista-modulos-reordenar" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+        <!-- Render dinámico de módulos con flechas arriba/abajo y toggle -->
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button onclick="restablecerModulosDefecto()" class="text-xs text-slate-400 hover:text-white transition">
+          ↺ Restaurar por defecto
+        </button>
+        <button onclick="guardarPreferenciaModulos()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-extrabold text-xs shadow-lg transition">
+          💾 Guardar Organización
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 📲 MODAL: CREDENCIALES GENERADAS PARA COMPAÑERO          -->
+  <!-- ======================================================== -->
+  <div id="modal-credenciales-creadas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl font-bold">
+        ✅
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-white">¡Usuario Creado Exitosamente!</h3>
+        <p class="text-xs text-slate-400">Credenciales listas para entregar a tu compañero de equipo:</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 font-mono text-xs">
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Nombre:</span>
+          <span id="cred-nombre" class="font-bold text-white"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Usuario:</span>
+          <span id="cred-user" class="font-bold text-cyan-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Contraseña:</span>
+          <span id="cred-pass" class="font-bold text-yellow-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">PIN Caja/POS:</span>
+          <span id="cred-pin" class="font-bold text-emerald-300"></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Rol Asignado:</span>
+          <span id="cred-rol" class="font-bold text-purple-300"></span>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="copiarCredencialesAlPortapapeles()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
+          <span>📋 Copiar Datos de Acceso</span>
+        </button>
+        <button onclick="enviarCredencialesWhatsApp()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
+          <span>📲 Enviar por WhatsApp</span>
+        </button>
+        <button onclick="cerrarModalCredenciales()" class="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- 📲 MODAL: WHATSAPP DIRECTO EMPRESARIAL NEBULOSA          -->
+  <!-- ======================================================== -->
+  <div id="modal-whatsapp-directo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold">
+            💬
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-white">Enviar Mensaje por WhatsApp</h3>
+            <p class="text-[11px] text-slate-400">Canal directo NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN</p>
+          </div>
+        </div>
+        <button onclick="cerrarModalWhatsAppDirecto()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Teléfono del Cliente (WhatsApp):</label>
+          <div class="flex gap-2">
+            <span class="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 font-mono font-bold">+506</span>
+            <input type="tel" id="wa-in-telefono" placeholder="88887777" class="flex-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-emerald-400 font-mono text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Plantilla Rápida:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="aplicarPlantillaWA('ticket')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              🧾 Comprobante
+            </button>
+            <button type="button" onclick="aplicarPlantillaWA('apartado')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              🗓️ Cobro Apartado
+            </button>
+            <button type="button" onclick="aplicarPlantillaWA('proforma')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              📋 Cotización
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mensaje a Enviar:</label>
+          <textarea id="wa-in-mensaje" rows="5" placeholder="Escribe el mensaje aquí..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-emerald-400 font-sans text-xs leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="cerrarModalWhatsAppDirecto()" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs">
+          Cancelar
+        </button>
+        <button onclick="dispararWhatsAppWebDirecto()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 flex items-center gap-1.5 transition">
+          <span>🚀 Abrir WhatsApp & Enviar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- 🔥 MODAL: PURGAR Y VACIAR SISTEMA A MODO PRODUCCIÓN      -->
+  <!-- ======================================================== -->
+  <div id="modal-purga-sistema" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-red-500/50 rounded-3xl p-6 shadow-2xl space-y-5 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center text-3xl font-bold shadow-lg shadow-red-500/20">
+        ⚠️
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-white">¿Vaciar Todo y Dejar el Sistema en Limpio?</h3>
+        <p class="text-xs text-slate-400 mt-1">Esta acción eliminará todos los registros de prueba para dejar tu sistema listo para producción real.</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 text-xs">
+        <strong class="text-slate-300 block border-b border-slate-800 pb-1.5 text-[11px] uppercase font-mono">Elementos que se limpiarán:</strong>
+        <div class="grid grid-cols-2 gap-2 text-slate-400 text-[11px]">
+          <div>• ✅ Inventario WMS Demo</div>
+          <div>• ✅ Facturas & Ventas Demo</div>
+          <div>• ✅ Proformas & Cotizaciones</div>
+          <div>• ✅ Apartados & Pagos Demo</div>
+          <div>• ✅ Gastos de Tienda Demo</div>
+          <div>• ✅ Historial de Chats Demo</div>
+        </div>
+        <div class="pt-2 border-t border-slate-800/80 text-[11px] text-amber-300 font-bold flex items-center gap-1.5">
+          <span>🔒</span> Tu usuario Maestro (Isaac) y la configuración de NEBULOSA permanecen 100% protegidos.
+        </div>
+      </div>
+
+      <div class="space-y-1.5 text-left">
+        <label class="block text-[11px] font-bold text-slate-300 uppercase">Ingresa tu PIN Maestro de Dueño:</label>
+        <div class="relative">
+          <input type="password" id="purga-in-pin" placeholder="PIN Maestro" maxlength="6"
+            class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-red-400 font-bold" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button onclick="cerrarModalPurgaSistema()" class="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white text-xs font-bold transition">
+          Cancelar
+        </button>
+        <button onclick="ejecutarPurgaSistema()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition">
+          <span>🔥 Confirmar y Vaciar Todo Ahora</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- ✏️ MODAL: EDITAR COLABORADOR & CAMBIAR ACCESOS           -->
+  <!-- ======================================================== -->
+  <div id="modal-editar-usuario" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full p-6 rounded-3xl border-purple-500/40 space-y-4 max-h-[90vh] overflow-y-auto modal-animated-card">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✏️</span>
+          <div>
+            <h3 class="text-sm font-bold text-white">Modificar Usuario & Credenciales</h3>
+            <p class="text-[10px] text-slate-400">Edita contraseñas, PINs de caja y permisos del colaborador.</p>
+          </div>
+        </div>
+        <button onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="edit-usr-id" />
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Nombre Completo:</label>
+            <input type="text" id="edit-usr-nombre" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Usuario:</label>
+            <input type="text" id="edit-usr-user" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-purple-400 uppercase block mb-1">Rol Asignado:</label>
+            <select id="edit-usr-rol" class="w-full bg-slate-950 border border-purple-500/50 px-3 py-2 rounded-xl text-white outline-none font-bold">
+              <option value="VENDEDOR">🛍️ Vendedor / Cajero</option>
+              <option value="JEFE_BODEGA">📦 Jefe de Bodega</option>
+              <option value="ADMINISTRADOR">🏬 Administrador</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between">
+              <label class="text-[10px] font-bold text-slate-400 uppercase">PIN de Caja:</label>
+              <button type="button" onclick="autoGenerarPinEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Nuevo</button>
+            </div>
+            <input type="text" id="edit-usr-pin" maxlength="6" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono text-center tracking-widest font-bold" />
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between">
+            <label class="text-[10px] font-bold text-slate-400 uppercase">Nueva Contraseña de Acceso:</label>
+            <button type="button" onclick="autoGenerarPassEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Generar Clave</button>
+          </div>
+          <input type="text" id="edit-usr-pass" placeholder="Escribe nueva clave o genera una automática" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
+        </div>
+
+        <!-- PERMISOS MODULARES -->
+        <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-2xl space-y-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase block">Permisos Específicos:</span>
+          <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-pos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Punto de Venta (POS)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-wms" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Inventario WMS
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-apartados" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Apartados & Cuotas
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-costos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Ver Costos Reales
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-gastos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Gestionar Gastos
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-eliminar" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Eliminar Productos
+            </label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
+          <div>
+            <strong class="text-white text-xs block">Estado de la Cuenta:</strong>
+            <span class="text-[10px] text-slate-400">Si se suspende, el colaborador no podrá ingresar.</span>
+          </div>
+          <select id="edit-usr-activo" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-bold outline-none">
+            <option value="1">🟢 Activo</option>
+            <option value="0">🔴 Suspendido</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button type="button" onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white text-xs font-bold">
+          Cancelar
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="compartirAccesosEditadosWA()" class="px-3 py-2 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 text-xs font-bold transition">
+            📲 WhatsApp
+          </button>
+          <button type="button" onclick="guardarEdicionUsuarioReal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition">
+            💾 Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SCRIPT LOGIC JAVASCRIPT CONECTADO A FASTAPI -->
   <!-- ======================================================== -->
   <script>
+
+    // ========================================================
+    // 🔔 SISTEMA DE NOTIFICACIONES TOAST (CERO ALERTS FEOS)
+    // ========================================================
+    window.mostrarToast = function(mensaje, tipo = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const borderColors = {
+        success: 'border-emerald-500/50 bg-slate-950/95 text-emerald-300 shadow-emerald-500/20',
+        error: 'border-red-500/50 bg-slate-950/95 text-red-300 shadow-red-500/20',
+        warning: 'border-amber-500/50 bg-slate-950/95 text-amber-300 shadow-amber-500/20',
+        info: 'border-cyan-500/50 bg-slate-950/95 text-cyan-300 shadow-cyan-500/20'
+      };
+      const icons = { success: '✅', error: '❌', warning: '⚠️', info: '⚡' };
+      
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border ${borderColors[tipo] || borderColors.info} text-xs font-bold shadow-2xl backdrop-blur-xl transition-all duration-300 transform translate-y-[-10px] opacity-0`;
+      toast.innerHTML = `<span>${icons[tipo] || '⚡'}</span> <span class="leading-tight text-white">${mensaje}</span>`;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-10px]', 'opacity-0');
+        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 350);
+      }, 3500);
+    };
+
+    // Reemplazo transparente de alert por toast elegante
+    window.alert = function(msg) {
+      let tipo = 'info';
+      if (msg.includes('✅') || msg.toLowerCase().includes('éxito') || msg.toLowerCase().includes('exito')) tipo = 'success';
+      else if (msg.includes('❌') || msg.toLowerCase().includes('error') || msg.toLowerCase().includes('denegad')) tipo = 'error';
+      else if (msg.includes('⚠️') || msg.toLowerCase().includes('advertencia') || msg.toLowerCase().includes('cuidado')) tipo = 'warning';
+      mostrarToast(msg, tipo);
+    };
+
+    // ========================================================
+    // 🛡️ MODAL DE CONFIRMACIÓN ELEGANTE (SIN NATIVE CONFIRM)
+    // ========================================================
+    let confirmPromiseResolver = null;
+    window.solicitarConfirmacionPro = function(titulo, mensaje, icon = '⚠️') {
+      return new Promise((resolve) => {
+        confirmPromiseResolver = resolve;
+        const tEl = document.getElementById('confirm-titulo');
+        const mEl = document.getElementById('confirm-mensaje');
+        const iEl = document.getElementById('confirm-icon');
+        if (tEl) tEl.textContent = titulo;
+        if (mEl) mEl.textContent = mensaje;
+        if (iEl) iEl.textContent = icon;
+        abrirModalGenerico('modal-confirmacion-accion');
+      });
+    };
+
+    window.cerrarModalConfirmacion = function(confirmado) {
+      cerrarModalGenerico('modal-confirmacion-accion');
+      if (confirmPromiseResolver) {
+        confirmPromiseResolver(confirmado);
+        confirmPromiseResolver = null;
+      }
+    };
+
+    // Helpers infalibles para abrir/cerrar modales
+    window.abrirModalGenerico = function(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.setProperty('display', 'flex', 'important');
+        el.classList.remove('hidden');
+      }
+    };
+    window.cerrarModalGenerico = function(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.setProperty('display', 'none', 'important');
+        el.classList.add('hidden');
+      }
+    };
+
+    // ========================================================
+    // ⏰ REPROGRAMACIÓN ELEGANTE DE ALARMAS DE PROFORMA
+    // ========================================================
+    window.posponerAlarmaPrompt = function(id) {
+      const p = proformas.find(x => x.id === id);
+      const idInput = document.getElementById('alarma-proforma-id');
+      const infoEl = document.getElementById('alarma-proforma-info');
+      const dtInput = document.getElementById('alarma-custom-datetime');
+
+      if (idInput) idInput.value = id;
+      if (infoEl) {
+        infoEl.textContent = p ? `${p.consecutivo} • ${p.cliente_nombre}` : `Proforma #${id}`;
+      }
+      if (dtInput) {
+        // Preset por defecto: mañana a las 9:00 AM
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        d.setHours(9, 0, 0, 0);
+        dtInput.value = d.toISOString().slice(0, 16);
+      }
+      abrirModalGenerico('modal-posponer-alarma');
+    };
+
+    window.cerrarModalPosponerAlarma = function() {
+      cerrarModalGenerico('modal-posponer-alarma');
+    };
+
+    window.setPresetAlarmaHoras = function(horas) {
+      const dtInput = document.getElementById('alarma-custom-datetime');
+      if (!dtInput) return;
+      const d = new Date();
+      d.setHours(d.getHours() + horas);
+      dtInput.value = d.toISOString().slice(0, 16);
+    };
+
+    window.setPresetAlarmaManana = function() {
+      const dtInput = document.getElementById('alarma-custom-datetime');
+      if (!dtInput) return;
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+      dtInput.value = d.toISOString().slice(0, 16);
+    };
+
+    window.setPresetAlarmaDias = function(dias) {
+      const dtInput = document.getElementById('alarma-custom-datetime');
+      if (!dtInput) return;
+      const d = new Date();
+      d.setDate(d.getDate() + dias);
+      d.setHours(10, 0, 0, 0);
+      dtInput.value = d.toISOString().slice(0, 16);
+    };
+
+    window.guardarNuevaAlarmaReal = async function() {
+      const id = document.getElementById('alarma-proforma-id').value;
+      const nueva = document.getElementById('alarma-custom-datetime').value;
+      if (!nueva) {
+        mostrarToast("Selecciona una fecha y hora para la alarma.", "warning");
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/proformas/${id}/alarma`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fecha_alarma: nueva, alarma_activa: true })
+        });
+        if (res.ok) {
+          cerrarModalPosponerAlarma();
+          mostrarToast("✅ Alarma reprogramada exitosamente.", "success");
+          await loadProformas();
+        } else {
+          mostrarToast("No se pudo reprogramar la alarma.", "error");
+        }
+      } catch (err) {
+        console.error("Error al reprogramar alarma:", err);
+        mostrarToast("Error de conexión al reprogramar alarma.", "error");
+      }
+    };
+    // ========================================================
+    // 🗑️ ELIMINACIÓN DE REGISTROS CON AUTORIZACIÓN DE LÍDER
+    // ========================================================
+    window.eliminarProformaReal = async function(id) {
+      const p = (proformas || []).find(x => x.id === id);
+      const consec = p ? p.consecutivo : `#${id}`;
+      const ok = await solicitarConfirmacionPro(
+        "¿Eliminar Proforma?",
+        `¿Estás seguro de que deseas eliminar permanentemente la proforma ${consec}?`,
+        "🗑️"
+      );
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/proformas/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          mostrarToast(`✅ Proforma ${consec} eliminada del sistema.`, "success");
+          await loadProformas();
+        } else {
+          mostrarToast("No se pudo eliminar la proforma.", "error");
+        }
+      } catch(e) {
+        mostrarToast("Error de conexión al eliminar la proforma.", "error");
+      }
+    };
+
+    window.eliminarApartadoReal = async function(id) {
+      const a = (apartados || []).find(x => x.id === id);
+      const consec = a ? a.consecutivo : `#${id}`;
+      const ok = await solicitarConfirmacionPro(
+        "¿Cancelar / Eliminar Apartado?",
+        `¿Deseas cancelar el apartado ${consec}? Los artículos reservados volverán a estar disponibles en el stock de bodega.`,
+        "🤝"
+      );
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/apartados/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          mostrarToast(`✅ Apartado ${consec} cancelado y stock restablecido.`, "success");
+          await loadApartados();
+          await loadWmsInventory();
+        } else {
+          mostrarToast("No se pudo cancelar el apartado.", "error");
+        }
+      } catch(e) {
+        mostrarToast("Error de conexión al cancelar apartado.", "error");
+      }
+    };
+
+
 
     // ========================================================
     // 👑 FUNCIONES DE CONTROL MAESTRO (ISAAC & TICKETS)
@@ -2288,19 +2890,11 @@
       document.getElementById('edit-perm-gastos').checked = !!perms.gastos;
       document.getElementById('edit-perm-eliminar').checked = !!perms.eliminar_productos;
 
-      const modal = document.getElementById('modal-editar-usuario');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
+      abrirModalGenerico('modal-editar-usuario');
     };
 
     window.closeModalEditarUsuario = function() {
-      const modal = document.getElementById('modal-editar-usuario');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
+      cerrarModalGenerico('modal-editar-usuario');
     };
 
     window.autoGenerarPinEdit = function() {
@@ -2479,7 +3073,8 @@
     };
 
     window.eliminarTicketReal = async function(id) {
-      if (!confirm("¿Eliminar este ticket del registro?")) return;
+      const ok = await solicitarConfirmacionPro("¿Eliminar Ticket?", "¿Estás seguro de que deseas eliminar este ticket del registro?", "🗑️");
+      if (!ok) return;
       try {
         const res = await fetch(`${API_BASE}/api/tickets/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -2749,17 +3344,10 @@
         lista.appendChild(item);
       });
 
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+      abrirModalGenerico('modal-organizar-modulos');
     };
 
-    window.cerrarModalModular = function() {
-      const modal = document.getElementById('modal-organizar-modulos');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    };
+    window.cerrarModalModular = function() { cerrarModalGenerico('modal-organizar-modulos'); };
 
     window.moverModuloPrioridad = function(index, dir) {
       const nuevoIndex = index + dir;
@@ -2797,21 +3385,13 @@
         alert("🔒 ACCESO DENEGADO: Esta función es exclusiva para el Dueño & Líder del sistema.");
         return;
       }
-      const modal = document.getElementById('modal-purga-sistema');
       const inPin = document.getElementById('purga-in-pin');
       if (inPin) inPin.value = "";
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
+      abrirModalGenerico('modal-purga-sistema');
     };
 
     window.cerrarModalPurgaSistema = function() {
-      const modal = document.getElementById('modal-purga-sistema');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
+      cerrarModalGenerico('modal-purga-sistema');
     };
 
     window.ejecutarPurgaSistema = async function() {
@@ -2821,9 +3401,8 @@
         return;
       }
 
-      if (!confirm("⚠️ ¡ADVERTENCIA DEFINITIVA!\n\n¿Estás 100% seguro de que deseas vaciar todos los registros demo para dejar la tienda en blanco?\n\nEsta acción no se puede deshacer.")) {
-        return;
-      }
+      // Confirmación directa desde el modal de purga con PIN
+
 
       const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
       const uName = sesion.username || 'isanchez';
@@ -3235,8 +3814,10 @@
         const prod = (wmsInventory || []).find(p => p.id === prodId);
         nombre = prod ? prod.nombre : "este producto";
       }
-      if (currentRole !== 'LIDER') {
-        alert("🔒 Acción denegada: Solo los usuarios con rol de LÍDER tienen autorización para eliminar productos de bodega.");
+      const ses = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
+      const isLeader = ses.is_master || ses.rol === 'DUENO' || ses.rol === 'LIDER' || ses.rol === 'ADMINISTRADOR' || ses.username === 'isanchez';
+      if (!isLeader) {
+        mostrarToast("Solo los usuarios con rol de Líder/Dueño pueden eliminar productos.", "error");
         return;
       }
       if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente de bodega el producto:\n"${nombre}"?\n\nEsta acción no se puede revertir.`)) {
@@ -3852,7 +4433,10 @@
             </div>
           </div>
           <div class="flex justify-between items-center pt-3 border-t border-slate-800/80">
-            <a href="${API_BASE}/api/proformas/${p.id}/pdf" target="_blank" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-slate-950 text-xs text-cyan-300 font-extrabold flex items-center gap-1.5 transition border border-cyan-500/30">📄 Descargar PDF</a>
+            <div class="flex items-center gap-2">
+              <a href="${API_BASE}/api/proformas/${p.id}/pdf" target="_blank" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-slate-950 text-xs text-cyan-300 font-extrabold flex items-center gap-1.5 transition border border-cyan-500/30">📄 Descargar PDF</a>
+              <button type="button" onclick="eliminarProformaReal(${p.id})" class="p-1.5 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Eliminar Proforma">🗑️</button>
+            </div>
             <span class="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">Pendiente</span>
           </div>
         `;
@@ -4023,12 +4607,15 @@
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+          <div class="pt-3 border-t border-slate-800 flex justify-between items-center gap-2">
             ${isLiquidado 
               ? `<span class="text-[11px] text-emerald-400 font-bold">✓ Entregar Artículo / Orden al Cliente</span>`
-              : `<button onclick="openModalAbono(${a.id})" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
+              : `<button onclick="openModalAbono(${a.id})" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
                    <span>+ Registrar Nuevo Abono</span>
                  </button>`}
+            <button onclick="eliminarApartadoReal(${a.id})" class="p-2 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Cancelar / Eliminar Apartado">
+              🗑️
+            </button>
           </div>
         `;
         grid.appendChild(div);
@@ -4631,313 +5218,13 @@
           </head>
           <body onload="window.print(); window.close();">
             ${printContents}
-          
-  <!-- ======================================================== -->
-  <!-- 🧩 MODAL: PERSONALIZAR ORDEN Y PRIORIDAD DE MÓDULOS      -->
-  <!-- ======================================================== -->
-  <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div>
-          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-            <span>🧩</span> Prioridad & Modularidad del Sistema
-          </h3>
-          <p class="text-xs text-slate-400">Organiza qué módulos ves primero según la prioridad de tu jornada.</p>
-        </div>
-        <button onclick="cerrarModalModular()" class="text-slate-400 hover:text-white text-xl">✕</button>
-      </div>
-
-      <div id="lista-modulos-reordenar" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-        <!-- Render dinámico de módulos con flechas arriba/abajo y toggle -->
-      </div>
-
-      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-        <button onclick="restablecerModulosDefecto()" class="text-xs text-slate-400 hover:text-white transition">
-          ↺ Restaurar por defecto
-        </button>
-        <button onclick="guardarPreferenciaModulos()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-extrabold text-xs shadow-lg transition">
-          💾 Guardar Organización
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- 📲 MODAL: CREDENCIALES GENERADAS PARA COMPAÑERO          -->
-  <!-- ======================================================== -->
-  <div id="modal-credenciales-creadas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
-      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl font-bold">
-        ✅
-      </div>
-      <div>
-        <h3 class="text-base font-extrabold text-white">¡Usuario Creado Exitosamente!</h3>
-        <p class="text-xs text-slate-400">Credenciales listas para entregar a tu compañero de equipo:</p>
-      </div>
-
-      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 font-mono text-xs">
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Nombre:</span>
-          <span id="cred-nombre" class="font-bold text-white"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Usuario:</span>
-          <span id="cred-user" class="font-bold text-cyan-300"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Contraseña:</span>
-          <span id="cred-pass" class="font-bold text-yellow-300"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">PIN Caja/POS:</span>
-          <span id="cred-pin" class="font-bold text-emerald-300"></span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Rol Asignado:</span>
-          <span id="cred-rol" class="font-bold text-purple-300"></span>
-        </div>
-      </div>
-
-      <div class="space-y-2 pt-2">
-        <button onclick="copiarCredencialesAlPortapapeles()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
-          <span>📋 Copiar Datos de Acceso</span>
-        </button>
-        <button onclick="enviarCredencialesWhatsApp()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
-          <span>📲 Enviar por WhatsApp</span>
-        </button>
-        <button onclick="cerrarModalCredenciales()" class="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ======================================================== -->
-  <!-- 📲 MODAL: WHATSAPP DIRECTO EMPRESARIAL NEBULOSA          -->
-  <!-- ======================================================== -->
-  <div id="modal-whatsapp-directo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold">
-            💬
-          </div>
-          <div>
-            <h3 class="text-sm font-extrabold text-white">Enviar Mensaje por WhatsApp</h3>
-            <p class="text-[11px] text-slate-400">Canal directo NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN</p>
-          </div>
-        </div>
-        <button onclick="cerrarModalWhatsAppDirecto()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Teléfono del Cliente (WhatsApp):</label>
-          <div class="flex gap-2">
-            <span class="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 font-mono font-bold">+506</span>
-            <input type="tel" id="wa-in-telefono" placeholder="88887777" class="flex-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-emerald-400 font-mono text-sm" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Plantilla Rápida:</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button type="button" onclick="aplicarPlantillaWA('ticket')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
-              🧾 Comprobante
-            </button>
-            <button type="button" onclick="aplicarPlantillaWA('apartado')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
-              🗓️ Cobro Apartado
-            </button>
-            <button type="button" onclick="aplicarPlantillaWA('proforma')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
-              📋 Cotización
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mensaje a Enviar:</label>
-          <textarea id="wa-in-mensaje" rows="5" placeholder="Escribe el mensaje aquí..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-emerald-400 font-sans text-xs leading-relaxed"></textarea>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-        <button onclick="cerrarModalWhatsAppDirecto()" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs">
-          Cancelar
-        </button>
-        <button onclick="dispararWhatsAppWebDirecto()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 flex items-center gap-1.5 transition">
-          <span>🚀 Abrir WhatsApp & Enviar</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ======================================================== -->
-  <!-- 🔥 MODAL: PURGAR Y VACIAR SISTEMA A MODO PRODUCCIÓN      -->
-  <!-- ======================================================== -->
-  <div id="modal-purga-sistema" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-red-500/50 rounded-3xl p-6 shadow-2xl space-y-5 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center text-3xl font-bold shadow-lg shadow-red-500/20">
-        ⚠️
-      </div>
-      <div>
-        <h3 class="text-base font-extrabold text-white">¿Vaciar Todo y Dejar el Sistema en Limpio?</h3>
-        <p class="text-xs text-slate-400 mt-1">Esta acción eliminará todos los registros de prueba para dejar tu sistema listo para producción real.</p>
-      </div>
-
-      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 text-xs">
-        <strong class="text-slate-300 block border-b border-slate-800 pb-1.5 text-[11px] uppercase font-mono">Elementos que se limpiarán:</strong>
-        <div class="grid grid-cols-2 gap-2 text-slate-400 text-[11px]">
-          <div>• ✅ Inventario WMS Demo</div>
-          <div>• ✅ Facturas & Ventas Demo</div>
-          <div>• ✅ Proformas & Cotizaciones</div>
-          <div>• ✅ Apartados & Pagos Demo</div>
-          <div>• ✅ Gastos de Tienda Demo</div>
-          <div>• ✅ Historial de Chats Demo</div>
-        </div>
-        <div class="pt-2 border-t border-slate-800/80 text-[11px] text-amber-300 font-bold flex items-center gap-1.5">
-          <span>🔒</span> Tu usuario Maestro (Isaac) y la configuración de NEBULOSA permanecen 100% protegidos.
-        </div>
-      </div>
-
-      <div class="space-y-1.5 text-left">
-        <label class="block text-[11px] font-bold text-slate-300 uppercase">Ingresa tu PIN Maestro de Dueño:</label>
-        <div class="relative">
-          <input type="password" id="purga-in-pin" placeholder="PIN Maestro" maxlength="6"
-            class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-red-400 font-bold" />
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button onclick="cerrarModalPurgaSistema()" class="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white text-xs font-bold transition">
-          Cancelar
-        </button>
-        <button onclick="ejecutarPurgaSistema()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition">
-          <span>🔥 Confirmar y Vaciar Todo Ahora</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ======================================================== -->
-  <!-- ✏️ MODAL: EDITAR COLABORADOR & CAMBIAR ACCESOS           -->
-  <!-- ======================================================== -->
-  <div id="modal-editar-usuario" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-lg w-full p-6 rounded-3xl border-purple-500/40 space-y-4 max-h-[90vh] overflow-y-auto modal-animated-card">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">✏️</span>
-          <div>
-            <h3 class="text-sm font-bold text-white">Modificar Usuario & Credenciales</h3>
-            <p class="text-[10px] text-slate-400">Edita contraseñas, PINs de caja y permisos del colaborador.</p>
-          </div>
-        </div>
-        <button onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
-      </div>
-
-      <input type="hidden" id="edit-usr-id" />
-
-      <div class="space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Nombre Completo:</label>
-            <input type="text" id="edit-usr-nombre" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400" />
-          </div>
-          <div>
-            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Usuario:</label>
-            <input type="text" id="edit-usr-user" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-[10px] font-bold text-purple-400 uppercase block mb-1">Rol Asignado:</label>
-            <select id="edit-usr-rol" class="w-full bg-slate-950 border border-purple-500/50 px-3 py-2 rounded-xl text-white outline-none font-bold">
-              <option value="VENDEDOR">🛍️ Vendedor / Cajero</option>
-              <option value="JEFE_BODEGA">📦 Jefe de Bodega</option>
-              <option value="ADMINISTRADOR">🏬 Administrador</option>
-            </select>
-          </div>
-          <div class="space-y-1">
-            <div class="flex justify-between">
-              <label class="text-[10px] font-bold text-slate-400 uppercase">PIN de Caja:</label>
-              <button type="button" onclick="autoGenerarPinEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Nuevo</button>
-            </div>
-            <input type="text" id="edit-usr-pin" maxlength="6" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono text-center tracking-widest font-bold" />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <div class="flex justify-between">
-            <label class="text-[10px] font-bold text-slate-400 uppercase">Nueva Contraseña de Acceso:</label>
-            <button type="button" onclick="autoGenerarPassEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Generar Clave</button>
-          </div>
-          <input type="text" id="edit-usr-pass" placeholder="Escribe nueva clave o genera una automática" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
-        </div>
-
-        <!-- PERMISOS MODULARES -->
-        <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-2xl space-y-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase block">Permisos Específicos:</span>
-          <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-pos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Punto de Venta (POS)
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-wms" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Inventario WMS
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-apartados" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Apartados & Cuotas
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-costos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Ver Costos Reales
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-gastos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Gestionar Gastos
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-eliminar" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Eliminar Productos
-            </label>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
-          <div>
-            <strong class="text-white text-xs block">Estado de la Cuenta:</strong>
-            <span class="text-[10px] text-slate-400">Si se suspende, el colaborador no podrá ingresar.</span>
-          </div>
-          <select id="edit-usr-activo" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-bold outline-none">
-            <option value="1">🟢 Activo</option>
-            <option value="0">🔴 Suspendido</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-        <button type="button" onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white text-xs font-bold">
-          Cancelar
-        </button>
-        <div class="flex items-center gap-2">
-          <button type="button" onclick="compartirAccesosEditadosWA()" class="px-3 py-2 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 text-xs font-bold transition">
-            📲 WhatsApp
-          </button>
-          <button type="button" onclick="guardarEdicionUsuarioReal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition">
-            💾 Guardar Cambios
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</body>
+          </body>
         </html>
       `);
       win.document.close();
     }
 
-    // LISTENER DE PISTOLA LÁSER / SCANNER DE CÓDIGOS DE BARRA EN POS
-    let barcodeBuffer = "";
+    // let barcodeBuffer = "";
     let lastKeyTime = 0;
     function initBarcodeScannerListener() {
       window.addEventListener('keydown', (e) => {
@@ -5354,35 +5641,6 @@
       } catch (err) {
         console.error("Error cargando usuarios:", err);
       }
-    }
-
-    function renderUsuarios() {
-      const tbody = document.getElementById('usuarios-table-body');
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      usuariosList.forEach(u => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-900/50 transition";
-        const permObj = JSON.parse(u.permisos_json || "{}");
-        const activePerms = Object.keys(permObj).filter(k => permObj[k]).map(k => `<span class="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[9px] mr-1">${k}</span>`).join('');
-
-        tr.innerHTML = `
-          <td class="p-3">
-            <strong class="text-white block">${u.nombre_completo}</strong>
-            <span class="text-[10px] text-cyan-400 font-mono">@${u.username}</span>
-          </td>
-          <td class="p-3">
-            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${u.rol === 'DUENO' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : u.rol === 'JEFE_BODEGA' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-purple-500/20 text-purple-300'}">${u.rol}</span>
-          </td>
-          <td class="p-3 font-mono font-bold text-slate-400 tracking-widest">••••</td>
-          <td class="p-3">${activePerms || '<span class="text-slate-500">Sin permisos</span>'}</td>
-          <td class="p-3"><span class="text-emerald-400 font-bold text-xs">● Activo</span></td>
-          <td class="p-3">
-            ${u.rol !== 'DUENO' ? `<button onclick="eliminarUsuarioReal(${u.id})" class="text-red-400 hover:underline font-bold text-xs">Eliminar</button>` : '<span class="text-slate-600 text-[10px]">Protegido</span>'}
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
 
     async function guardarNuevoUsuarioReal() {
@@ -6311,8 +6569,8 @@
       await loadTickets();
     }
 
-    function openModalTicket() { document.getElementById('modal-ticket').classList.remove('hidden'); }
-    function closeModalTicket() { document.getElementById('modal-ticket').classList.add('hidden'); }
+    function openModalTicket() { abrirModalGenerico('modal-ticket'); }
+    function closeModalTicket() { cerrarModalGenerico('modal-ticket'); }
 
     async function submitSupportTicketReal() {
       const payload = {
@@ -6338,8 +6596,8 @@
       }
     }
 
-    function openMasterLeaderModal() { document.getElementById('modal-master-leader').classList.remove('hidden'); }
-    function closeMasterLeaderModal() { document.getElementById('modal-master-leader').classList.add('hidden'); }
+    function openMasterLeaderModal() { abrirModalGenerico('modal-master-leader'); }
+    function closeMasterLeaderModal() { cerrarModalGenerico('modal-master-leader'); }
     function generateMasterUnlockCode() {
       const code = Math.floor(100000 + Math.random() * 900000);
       document.getElementById('master-otp-display').textContent = code;
@@ -6362,86 +6620,6 @@
       renderWmsTable();
     }
   </script>
-
-  <!-- ======================================================== -->
-  <!-- 🧩 MODAL: PERSONALIZAR ORDEN Y PRIORIDAD DE MÓDULOS      -->
-  <!-- ======================================================== -->
-  <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div>
-          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
-            <span>🧩</span> Prioridad & Modularidad del Sistema
-          </h3>
-          <p class="text-xs text-slate-400">Organiza qué módulos ves primero según la prioridad de tu jornada.</p>
-        </div>
-        <button onclick="cerrarModalModular()" class="text-slate-400 hover:text-white text-xl">✕</button>
-      </div>
-
-      <div id="lista-modulos-reordenar" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-        <!-- Render dinámico de módulos con flechas arriba/abajo y toggle -->
-      </div>
-
-      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
-        <button onclick="restablecerModulosDefecto()" class="text-xs text-slate-400 hover:text-white transition">
-          ↺ Restaurar por defecto
-        </button>
-        <button onclick="guardarPreferenciaModulos()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-extrabold text-xs shadow-lg transition">
-          💾 Guardar Organización
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- 📲 MODAL: CREDENCIALES GENERADAS PARA COMPAÑERO          -->
-  <!-- ======================================================== -->
-  <div id="modal-credenciales-creadas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
-      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl font-bold">
-        ✅
-      </div>
-      <div>
-        <h3 class="text-base font-extrabold text-white">¡Usuario Creado Exitosamente!</h3>
-        <p class="text-xs text-slate-400">Credenciales listas para entregar a tu compañero de equipo:</p>
-      </div>
-
-      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 font-mono text-xs">
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Nombre:</span>
-          <span id="cred-nombre" class="font-bold text-white"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Usuario:</span>
-          <span id="cred-user" class="font-bold text-cyan-300"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">Contraseña:</span>
-          <span id="cred-pass" class="font-bold text-yellow-300"></span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
-          <span class="text-slate-400">PIN Caja/POS:</span>
-          <span id="cred-pin" class="font-bold text-emerald-300"></span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Rol Asignado:</span>
-          <span id="cred-rol" class="font-bold text-purple-300"></span>
-        </div>
-      </div>
-
-      <div class="space-y-2 pt-2">
-        <button onclick="copiarCredencialesAlPortapapeles()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
-          <span>📋 Copiar Datos de Acceso</span>
-        </button>
-        <button onclick="enviarCredencialesWhatsApp()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
-          <span>📲 Enviar por WhatsApp</span>
-        </button>
-        <button onclick="cerrarModalCredenciales()" class="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs">
-          Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
 
 </body>
 </html>
