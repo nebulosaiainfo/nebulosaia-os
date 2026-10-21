@@ -1383,12 +1383,117 @@ def listar_historial_facturas(db: Session = Depends(get_db)):
         })
     return resultado
 
+
+def resolver_ruta_pdf_factura(fac, db: Session) -> str:
+    if fac.pdf_ruta and os.path.exists(fac.pdf_ruta):
+        return fac.pdf_ruta
+    nombre_fact = f"Factura_{fac.consecutivo}.pdf"
+    candidato = PDF_DIR / nombre_fact
+    if candidato.exists():
+        fac.pdf_ruta = str(candidato)
+        db.commit()
+        return str(candidato)
+    config = db.query(DBConfiguracion).first()
+    items = []
+    try:
+        items = json.loads(fac.items_json) if fac.items_json else []
+    except Exception:
+        items = []
+    datos_pdf = {
+        "consecutivo": fac.consecutivo,
+        "fecha": fac.fecha.strftime("%d/%m/%Y %H:%M") if fac.fecha else datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "color_primario": config.color_primario if config else "#111827",
+        "moneda": "CRC",
+        "vendedor_nombre": fac.vendedor_nombre or "Vendedor",
+        "metodo_pago": fac.metodo_pago or "EFECTIVO",
+        "comprobante_banco": fac.comprobante_sinpe or "N/A",
+        "tienda": {
+            "nombre": config.nombre_tienda if config else "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
+            "cedula": config.cedula_fiscal if config else "3-101-948271",
+            "telefono": config.telefono if config else "+506 8888-8888",
+            "direccion": config.direccion if config else "San José, Costa Rica",
+            "actividad": config.codigo_actividad if config else "477101 - Venta prendas"
+        },
+        "cliente": {
+            "nombre": fac.cliente_nombre or "Consumidor Final",
+            "cedula": fac.cliente_cedula or "999999999",
+            "correo": fac.cliente_correo or "",
+            "telefono": fac.cliente_telefono or "",
+            "direccion": "San José, Costa Rica"
+        },
+        "lineas": items,
+        "subtotal": fac.subtotal or 0.0,
+        "descuento": fac.descuento or 0.0,
+        "iva": fac.iva or 0.0,
+        "total": fac.total or 0.0
+    }
+    nueva_ruta = generar_pdf_factura(datos_pdf)
+    fac.pdf_ruta = nueva_ruta
+    db.commit()
+    return nueva_ruta
+
+def resolver_ruta_pdf_proforma(prof, db: Session) -> str:
+    if prof.pdf_ruta and os.path.exists(prof.pdf_ruta):
+        return prof.pdf_ruta
+    nombre_fact = f"Factura_{prof.consecutivo}.pdf"
+    nombre_prof = f"Proforma_{prof.consecutivo}.pdf"
+    candidatos = [
+        PDF_DIR / nombre_fact,
+        PDF_DIR / nombre_prof,
+        PROFORMAS_DIR / nombre_fact,
+        PROFORMAS_DIR / nombre_prof
+    ]
+    for c in candidatos:
+        if c.exists():
+            prof.pdf_ruta = str(c)
+            db.commit()
+            return str(c)
+    config = db.query(DBConfiguracion).first()
+    items = []
+    try:
+        items = json.loads(prof.items_json) if prof.items_json else []
+    except Exception:
+        items = []
+    datos_pdf = {
+        "consecutivo": prof.consecutivo,
+        "fecha": prof.fecha.strftime("%d/%m/%Y %H:%M") if prof.fecha else datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "color_primario": config.color_primario if config else "#111827",
+        "moneda": "CRC",
+        "vendedor_nombre": prof.vendedor_nombre or "Vendedor",
+        "metodo_pago": f"COTIZACIÓN / SEGUIMIENTO ({prof.canal_origen or 'Directo'})",
+        "comprobante_banco": "PROFORMA VÁLIDA POR 8 DÍAS",
+        "tienda": {
+            "nombre": config.nombre_tienda if config else "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
+            "cedula": config.cedula_fiscal if config else "3-101-948271",
+            "telefono": config.telefono if config else "+506 8888-8888",
+            "direccion": config.direccion if config else "San José, Costa Rica",
+            "actividad": config.codigo_actividad if config else "477101 - Venta prendas"
+        },
+        "cliente": {
+            "nombre": prof.cliente_nombre or "Cliente",
+            "cedula": "PROSPECTO",
+            "correo": prof.cliente_correo or "",
+            "telefono": prof.cliente_telefono or "",
+            "direccion": f"Canal: {prof.canal_origen or 'Tienda'} | {prof.notas_seguimiento or ''}"
+        },
+        "lineas": items,
+        "subtotal": prof.subtotal or 0.0,
+        "descuento": prof.descuento or 0.0,
+        "iva": prof.iva or 0.0,
+        "total": prof.total or 0.0
+    }
+    nueva_ruta = generar_pdf_factura(datos_pdf)
+    prof.pdf_ruta = nueva_ruta
+    db.commit()
+    return nueva_ruta
+
 @app.get("/api/pos/facturas/{factura_id}/pdf")
 def descargar_factura_pdf(factura_id: int, db: Session = Depends(get_db)):
     fac = db.query(DBFactura).filter(DBFactura.id == factura_id).first()
-    if not fac or not fac.pdf_ruta or not os.path.exists(fac.pdf_ruta):
-        raise HTTPException(status_code=404, detail="Archivo PDF de factura no encontrado")
-    return FileResponse(fac.pdf_ruta, media_type="application/pdf", filename=f"Factura_{fac.consecutivo}.pdf")
+    if not fac:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    ruta = resolver_ruta_pdf_factura(fac, db)
+    return FileResponse(ruta, media_type="application/pdf", filename=f"Factura_{fac.consecutivo}.pdf")
 
 @app.post("/api/pos/upload-voucher")
 async def subir_voucher_pago(file: UploadFile = File(...)):
@@ -1565,9 +1670,10 @@ def actualizar_alarma_proforma(prof_id: int, req: AlarmaUpdateRequest, db: Sessi
 @app.get("/api/proformas/{prof_id}/pdf")
 def descargar_proforma_pdf(prof_id: int, db: Session = Depends(get_db)):
     prof = db.query(DBProformaSeguimiento).filter(DBProformaSeguimiento.id == prof_id).first()
-    if not prof or not prof.pdf_ruta or not os.path.exists(prof.pdf_ruta):
-        raise HTTPException(status_code=404, detail="Archivo PDF de proforma no encontrado")
-    return FileResponse(prof.pdf_ruta, media_type="application/pdf", filename=f"Proforma_{prof.consecutivo}.pdf")
+    if not prof:
+        raise HTTPException(status_code=404, detail="Proforma no encontrada")
+    ruta = resolver_ruta_pdf_proforma(prof, db)
+    return FileResponse(ruta, media_type="application/pdf", filename=f"Proforma_{prof.consecutivo}.pdf")
 
 # ==========================================
 # 6. SISTEMA DE APARTADOS Y PAGOS A CUOTAS
