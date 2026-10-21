@@ -383,7 +383,12 @@
 
         <!-- MÓDULOS MODULAR BUILDER & PERFIL PRO -->
         <button onclick="abrirModalModular()" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition" title="Personalizar orden y prioridad de módulos">
-          <span>🧩 Módulos & Prioridad</span>
+          <span>🧩 Módulos</span>
+        </button>
+
+        <!-- BOTÓN RÁPIDO: MODO LIMPIO / PURGA (SOLO ISAAC) -->
+        <button onclick="abrirModalPurgaSistema()" class="px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/80 border border-red-500/50 text-xs font-bold text-red-300 flex items-center gap-1.5 transition" title="Vaciar datos de demo y dejar tienda en limpio">
+          <span>🧹 Modo Limpio</span>
         </button>
 
         <!-- PERFIL DE USUARIO LOGUEADO -->
@@ -1471,6 +1476,25 @@
             💾 Guardar en Base de Datos
           </button>
         </div>
+
+        <!-- 🔥 ZONA CRÍTICA: PURGA DE BASE DE DATOS (SOLO DUEÑO) -->
+        <div id="seccion-purga-dueno" class="mt-6 p-5 rounded-2xl bg-red-950/30 border border-red-500/50 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center text-2xl font-bold shadow-lg shadow-red-500/20">
+                🔥
+              </div>
+              <div>
+                <h4 class="text-xs font-extrabold text-red-400 uppercase tracking-wider">Zona Crítica • Purga de Sistema (Solo Dueño)</h4>
+                <p class="text-[11px] text-slate-300">Vacía todos los datos de prueba (ventas, proformas, apartados y stock demo) para iniciar la tienda 100% en limpio.</p>
+              </div>
+            </div>
+            <button type="button" onclick="abrirModalPurgaSistema()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition whitespace-nowrap">
+              <span>🧹 Vaciar Todo en Limpio</span>
+            </button>
+          </div>
+        </div>
+
       </div>
     </section>
 
