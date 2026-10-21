@@ -341,6 +341,87 @@
       cerrarModalWhatsAppDirecto();
     }
 
+
+    // ========================================================
+    // 🔥 SISTEMA DE PURGA MAESTRA (SOLO DUEÑO)
+    // ========================================================
+    function abrirModalPurgaSistema() {
+      // Validar si el usuario actual es el Dueño
+      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
+      if (sesion.rol !== 'DUENO' && sesion.username !== 'lider_isaac' && !sesion.is_master) {
+        alert("🔒 ACCESO DENEGADO: Esta función es exclusiva para el Dueño & Líder del sistema.");
+        return;
+      }
+      const modal = document.getElementById('modal-purga-sistema');
+      const inPin = document.getElementById('purga-in-pin');
+      if (inPin) inPin.value = "";
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function cerrarModalPurgaSistema() {
+      const modal = document.getElementById('modal-purga-sistema');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function ejecutarPurgaSistema() {
+      const inPin = document.getElementById('purga-in-pin').value.trim();
+      if (!inPin) {
+        alert("Por favor ingresa tu PIN Maestro para autorizar.");
+        return;
+      }
+
+      if (!confirm("⚠️ ¡ADVERTENCIA DEFINITIVA!\n\n¿Estás 100% seguro de que deseas vaciar todos los registros demo para dejar la tienda en blanco?\n\nEsta acción no se puede deshacer.")) {
+        return;
+      }
+
+      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
+      const uName = sesion.username || 'lider_isaac';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/purgar-sistema`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin_maestro: inPin,
+            usuario: uName,
+            purgar_wms: true,
+            purgar_ventas: true,
+            purgar_proformas: true,
+            purgar_apartados: true,
+            purgar_gastos: true,
+            purgar_compras: true,
+            purgar_crm: true,
+            purgar_proveedores: false
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          cerrarModalPurgaSistema();
+          alert("🎉 ¡SISTEMA PURGADO CON ÉXITO!\n\nTodos los datos de prueba han sido eliminados.\nNEBULOSA OS está 100% limpio y listo para registrar mercadería y ventas reales.");
+          // Recargar todos los módulos en limpio
+          if (typeof loadWmsInventory === 'function') await loadWmsInventory();
+          if (typeof loadHistorialFacturas === 'function') await loadHistorialFacturas();
+          if (typeof loadProformas === 'function') await loadProformas();
+          if (typeof loadApartados === 'function') await loadApartados();
+          if (typeof loadGastos === 'function') await loadGastos();
+          if (typeof loadFinanzasResumen === 'function') await loadFinanzasResumen();
+          if (typeof switchTab === 'function') switchTab('wms');
+        } else {
+          alert("❌ Error: " + (data.detail || "PIN incorrecto o no autorizado."));
+        }
+      } catch (err) {
+        console.error("Error al purgar sistema:", err);
+        alert("Error de conexión al purgar el sistema.");
+      }
+    }
+
 </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4339,6 +4420,54 @@
         </button>
         <button onclick="dispararWhatsAppWebDirecto()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 flex items-center gap-1.5 transition">
           <span>🚀 Abrir WhatsApp & Enviar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- 🔥 MODAL: PURGAR Y VACIAR SISTEMA A MODO PRODUCCIÓN      -->
+  <!-- ======================================================== -->
+  <div id="modal-purga-sistema" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-red-500/50 rounded-3xl p-6 shadow-2xl space-y-5 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center text-3xl font-bold shadow-lg shadow-red-500/20">
+        ⚠️
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-white">¿Vaciar Todo y Dejar el Sistema en Limpio?</h3>
+        <p class="text-xs text-slate-400 mt-1">Esta acción eliminará todos los registros de prueba para dejar tu sistema listo para producción real.</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 text-xs">
+        <strong class="text-slate-300 block border-b border-slate-800 pb-1.5 text-[11px] uppercase font-mono">Elementos que se limpiarán:</strong>
+        <div class="grid grid-cols-2 gap-2 text-slate-400 text-[11px]">
+          <div>• ✅ Inventario WMS Demo</div>
+          <div>• ✅ Facturas & Ventas Demo</div>
+          <div>• ✅ Proformas & Cotizaciones</div>
+          <div>• ✅ Apartados & Pagos Demo</div>
+          <div>• ✅ Gastos de Tienda Demo</div>
+          <div>• ✅ Historial de Chats Demo</div>
+        </div>
+        <div class="pt-2 border-t border-slate-800/80 text-[11px] text-amber-300 font-bold flex items-center gap-1.5">
+          <span>🔒</span> Tu usuario Maestro (Isaac) y la configuración de NEBULOSA permanecen 100% protegidos.
+        </div>
+      </div>
+
+      <div class="space-y-1.5 text-left">
+        <label class="block text-[11px] font-bold text-slate-300 uppercase">Ingresa tu PIN Maestro de Dueño:</label>
+        <div class="relative">
+          <input type="password" id="purga-in-pin" placeholder="PIN Maestro (ej: 7777)" maxlength="6"
+            class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-red-400 font-bold" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button onclick="cerrarModalPurgaSistema()" class="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white text-xs font-bold transition">
+          Cancelar
+        </button>
+        <button onclick="ejecutarPurgaSistema()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition">
+          <span>🔥 Confirmar y Vaciar Todo Ahora</span>
         </button>
       </div>
     </div>
