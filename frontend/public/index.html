@@ -2353,6 +2353,100 @@
   </div>
 
 <!-- ======================================================== -->
+  
+  <!-- ======================================================== -->
+  <!-- 📦 MODAL: CREAR APARTADO Y CONTROL DE CUOTAS             -->
+  <!-- ======================================================== -->
+  <div id="modal-crear-apartado" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-3xl border border-emerald-500/30 bg-slate-900/90 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <div class="flex items-center gap-2">
+          <span class="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 text-lg">📦</span>
+          <div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Formalizar Apartado & Control de Cuotas</h3>
+            <p class="text-[11px] text-slate-400">Reserva de prendas en bodega y plan de abonos</p>
+          </div>
+        </div>
+        <button onclick="closeModalCrearApartado()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">✕</button>
+      </div>
+
+      <!-- CLIENTE Y TOTAL -->
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">Cliente Titular:</label>
+          <div id="modal-apt-cliente-nombre" class="font-bold text-white mt-1 truncate">Cliente General</div>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">Total Prendas (CRC):</label>
+          <div id="modal-apt-total" class="font-mono font-bold text-emerald-400 mt-1">CRC 0.00</div>
+        </div>
+      </div>
+
+      <!-- RESUMEN PRENDAS -->
+      <div class="bg-slate-950/70 p-3 rounded-2xl border border-slate-800/80 space-y-1 max-h-32 overflow-y-auto">
+        <div class="text-[10px] font-bold text-slate-400 uppercase">Prendas a Reservar en Bodega:</div>
+        <div id="modal-apt-items-list" class="space-y-1 text-[11px] text-slate-300"></div>
+      </div>
+
+      <!-- ABONO INICIAL -->
+      <div class="space-y-2">
+        <label class="text-[10px] uppercase font-bold text-slate-400">Monto Abono Inicial (CRC):</label>
+        <input type="number" id="modal-apt-abono-monto" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 outline-none" placeholder="0 o monto de prima" value="5000">
+        <!-- Chips rápidos de monto -->
+        <div class="flex gap-2 text-[10px]">
+          <button type="button" onclick="setAbonoRapido(0)" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">CRC 0</button>
+          <button type="button" onclick="setAbonoRapido(5000)" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">CRC 5,000</button>
+          <button type="button" onclick="setAbonoRapido(10000)" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">CRC 10,000</button>
+          <button type="button" onclick="setAbonoPorcentaje(0.5)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30">50% Total</button>
+        </div>
+      </div>
+
+      <!-- METODO PAGO Y REFERENCIA -->
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">Método de Pago:</label>
+          <select id="modal-apt-metodo-pago" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-white text-xs mt-1 outline-none">
+            <option value="SINPE_MOVIL">SINPE Móvil</option>
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="TARJETA">Tarjeta Débito/Crédito</option>
+            <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">N° Comprobante / Voucher:</label>
+          <input type="text" id="modal-apt-comprobante" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-white text-xs mt-1 outline-none font-mono" placeholder="Ej: SINPE #102938" value="SINPE #Apertura">
+        </div>
+      </div>
+
+      <!-- PLAZO Y NOTAS -->
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">Plazo Máximo Retiro:</label>
+          <select id="modal-apt-plazo" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-white text-xs mt-1 outline-none">
+            <option value="15">15 Días</option>
+            <option value="30" selected>30 Días (Estándar)</option>
+            <option value="45">45 Días</option>
+            <option value="60">60 Días</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] uppercase font-bold text-slate-400">Notas / Términos:</label>
+          <input type="text" id="modal-apt-notas" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-2 text-white text-xs mt-1 outline-none" placeholder="Opcional..." value="Apartado desde POS">
+        </div>
+      </div>
+
+      <!-- BOTONES DE ACCION -->
+      <div class="flex gap-2 pt-2 border-t border-slate-800">
+        <button onclick="closeModalCrearApartado()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition">
+          Cancelar
+        </button>
+        <button onclick="confirmarCrearApartadoModal()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2">
+          <span>📄 Crear Apartado & Generar PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
     <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -2964,11 +3058,12 @@
       const pass = document.getElementById('edit-usr-pass').value.trim();
       const rol = document.getElementById('edit-usr-rol').value;
 
-      const tel = prompt("Ingresa el número de WhatsApp del colaborador (ej: 88887777):");
-      if (!tel) return;
-
-      const texto = `Hola ${nombre}! ⚡ Te compartimos tus accesos actualizados para *NEBULOSA OS*:\n\n👤 *Usuario:* ${username}\n🔒 *Contraseña:* ${pass}\n⚡ *PIN Rápido:* ${pin}\n💼 *Rol:* ${rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
-      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
+      const texto = `Hola ${nombre}! Te compartimos tus accesos actualizados para *NEBULOSA OS*:\n\n*Usuario:* ${username}\n*Contraseña:* ${pass}\n*PIN Rápido:* ${pin}\n*Rol:* ${rol}\n\n*Ingresa aquí:* https://nebulosaia-os.onrender.com`;
+      if (typeof abrirModalWhatsAppDirecto === 'function') {
+        abrirModalWhatsAppDirecto("", texto);
+      } else {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+      }
     };
 
     // ========================================================
@@ -4522,16 +4617,8 @@
       }
     }
 
-    async function posponerAlarmaPrompt(id) {
-      const nueva = prompt("Ingresa la nueva fecha y hora para la alarma (Formato: YYYY-MM-DDTHH:MM):", new Date().toISOString().slice(0, 16));
-      if (nueva) {
-        await fetch(`${API_BASE}/api/proformas/${id}/alarma`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fecha_alarma: nueva, alarma_activa: true })
-        });
-        await loadProformas();
-      }
+    // posponerAlarmaPrompt is handled via window.posponerAlarmaPrompt modal
+
     }
 
     async function marcarAlarmaAtendida(id) {
@@ -4608,8 +4695,11 @@
           </div>
 
           <div class="pt-3 border-t border-slate-800 flex justify-between items-center gap-2">
+            <a href="${API_BASE}/api/apartados/${a.id}/pdf" target="_blank" class="px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black font-bold text-xs border border-cyan-500/30 transition flex items-center justify-center gap-1.5" title="Descargar Comprobante PDF Oficial">
+              <span>📄 Descargar PDF</span>
+            </a>
             ${isLiquidado 
-              ? `<span class="text-[11px] text-emerald-400 font-bold">✓ Entregar Artículo / Orden al Cliente</span>`
+              ? `<span class="text-[11px] text-emerald-400 font-bold flex-1 text-center">✓ Entregar Artículo / Orden al Cliente</span>`
               : `<button onclick="openModalAbono(${a.id})" class="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
                    <span>+ Registrar Nuevo Abono</span>
                  </button>`}
@@ -4622,30 +4712,76 @@
       });
     }
 
-    function openModalCreateApartadoFromPos() {
+        function openModalCreateApartadoFromPos() {
       if (cart.length === 0) {
-        alert("Agrega al menos un artículo al carrito para crear el apartado.");
+        mostrarToast("Agrega al menos un artículo al carrito para crear el apartado.", "warning");
         return;
       }
       const cliId = document.getElementById('pos-cliente-select').value;
       const cli = crmClients.find(c => c.id == cliId) || { nombre: "Cliente General", telefono: "", cedula: "" };
       const montoTotal = cart.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
-      
-      const abonoStr = prompt(`Crear Apartado para ${cli.nombre}.\nTotal: CRC ${montoTotal.toLocaleString()}\n\nIngresa el abono inicial (o 0 si no abona hoy):`, "5000");
-      if (abonoStr === null) return;
-      const abonoNum = parseFloat(abonoStr) || 0;
-      const refComprobante = prompt("Ingresa el comprobante o referencia de pago (SINPE / Efectivo / Tarjeta):", "SINPE #Apertura") || "";
 
-      submitApartadoPayload({
+      const nomEl = document.getElementById('modal-apt-cliente-nombre');
+      if (nomEl) nomEl.textContent = `${cli.nombre} (${cli.telefono || 'Sin tel'})`;
+      
+      const totEl = document.getElementById('modal-apt-total');
+      if (totEl) totEl.textContent = `CRC ${montoTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      
+      const abonoInput = document.getElementById('modal-apt-abono-monto');
+      if (abonoInput) {
+        abonoInput.value = Math.min(5000, montoTotal);
+        abonoInput.max = montoTotal;
+      }
+
+      const itemsContainer = document.getElementById('modal-apt-items-list');
+      if (itemsContainer) {
+        itemsContainer.innerHTML = cart.map(i => `
+          <div class="flex justify-between items-center py-0.5 border-b border-slate-900 last:border-0">
+            <span>• <b>${i.nombre}</b> (${i.talla || 'Gen'}) x${i.cantidad}</span>
+            <span class="font-mono text-cyan-400">CRC ${(i.precio * i.cantidad).toLocaleString()}</span>
+          </div>
+        `).join('');
+      }
+
+      abrirModalGenerico('modal-crear-apartado');
+    }
+
+    function closeModalCrearApartado() {
+      cerrarModalGenerico('modal-crear-apartado');
+    }
+
+    function setAbonoRapido(val) {
+      const input = document.getElementById('modal-apt-abono-monto');
+      if (input) input.value = val;
+    }
+
+    function setAbonoPorcentaje(pct) {
+      const montoTotal = cart.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
+      const input = document.getElementById('modal-apt-abono-monto');
+      if (input) input.value = Math.round(montoTotal * pct);
+    }
+
+    async function confirmarCrearApartadoModal() {
+      const cliId = document.getElementById('pos-cliente-select').value;
+      const cli = crmClients.find(c => c.id == cliId) || { nombre: "Cliente General", telefono: "", cedula: "" };
+      const abonoNum = parseFloat(document.getElementById('modal-apt-abono-monto').value) || 0;
+      const metodoAbono = document.getElementById('modal-apt-metodo-pago').value;
+      const comprobante = document.getElementById('modal-apt-comprobante').value.trim() || "S/C";
+      const plazo = parseInt(document.getElementById('modal-apt-plazo').value) || 30;
+      const notas = document.getElementById('modal-apt-notas').value.trim() || "Apartado creado desde POS.";
+
+      closeModalCrearApartado();
+
+      await submitApartadoPayload({
         cliente_nombre: cli.nombre,
         cliente_telefono: cli.telefono,
         cliente_cedula: cli.cedula,
         vendedor_nombre: document.getElementById('pos-vendedor-select').value,
-        plazo_dias: 30,
+        plazo_dias: plazo,
         abono_inicial: abonoNum,
-        metodo_pago_abono: "SINPE_MOVIL",
-        comprobante_abono: refComprobante,
-        notas: "Apartado creado desde el punto de venta.",
+        metodo_pago_abono: metodoAbono,
+        comprobante_abono: comprobante,
+        notas: notas,
         items: cart.map(i => ({
           id: i.id,
           sku: i.sku,
@@ -4659,34 +4795,14 @@
     }
 
     function openModalNuevoApartadoDirecto() {
-      const cliName = prompt("Nombre del cliente para el apartado:", "Nuevo Prospecto");
-      if (!cliName) return;
       if (wmsInventory.length === 0) {
-        alert("No hay artículos en inventario WMS para apartar.");
+        mostrarToast("No hay artículos en inventario WMS para apartar.", "warning");
         return;
       }
-      const p = wmsInventory[0];
-      const abono = parseFloat(prompt(`Artículo a apartar: ${p.nombre} (CRC ${p.precio}).\nIngresa monto del abono inicial:`, "5000")) || 0;
-
-      submitApartadoPayload({
-        cliente_nombre: cliName,
-        cliente_telefono: "+506 8888-0000",
-        vendedor_nombre: "Carlos Méndez",
-        plazo_dias: 30,
-        abono_inicial: abono,
-        metodo_pago_abono: "SINPE_MOVIL",
-        comprobante_abono: "SINPE-INIT",
-        notas: "Apartado registrado manualmente.",
-        items: [{
-          id: p.id,
-          sku: p.sku,
-          nombre: p.nombre,
-          talla: p.talla,
-          color: p.color,
-          cantidad: 1,
-          precio: p.precio
-        }]
-      });
+      if (cart.length === 0) {
+        addToCart(wmsInventory[0].id);
+      }
+      openModalCreateApartadoFromPos();
     }
 
     async function submitApartadoPayload(payload) {
@@ -4697,13 +4813,23 @@
           body: JSON.stringify(payload)
         });
         if (res.ok) {
+          const data = await res.json();
           cart = [];
           updateCartUI();
           await loadApartados();
           await loadWmsInventory();
           switchTab('apartados');
-          alert("🤝 Apartado creado con éxito y stock apartado en WMS.");
+          // Abrir automáticamente el comprobante PDF oficial
+          window.open(`${API_BASE}/api/apartados/${data.id}/pdf`, '_blank');
+          mostrarToast(`✅ Apartado ${data.consecutivo || ''} formalizado con éxito. Comprobante PDF generado.`, 'success');
         } else {
+          const err = await res.json().catch(() => ({}));
+          mostrarToast(`Error: ${err.detail || 'Error al crear apartado'}`, 'error');
+        }
+      } catch (e) {
+        mostrarToast("Error de conexión al servidor FastAPI.", 'error');
+      }
+    } else {
           const err = await res.json();
           alert(err.detail || "Error al crear apartado");
         }
@@ -4731,7 +4857,7 @@
       const id = document.getElementById('abono-apartado-id').value;
       const monto = parseFloat(document.getElementById('abono-in-monto').value);
       if (!monto || monto <= 0) {
-        alert("Ingresa un monto válido para el abono.");
+        mostrarToast("Ingresa un monto válido para el abono.", "warning");
         return;
       }
       const payload = {
@@ -4741,20 +4867,26 @@
         notas: "Abono aplicado en caja"
       };
 
-      const res = await fetch(`${API_BASE}/api/apartados/${id}/abonos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const res = await fetch(`${API_BASE}/api/apartados/${id}/abonos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      if (res.ok) {
-        closeModalAbono();
-        await loadApartados();
-        await loadWmsInventory();
-        alert("Abono registrado con éxito.");
-      } else {
-        const err = await res.json();
-        alert(err.detail || "Error al registrar abono");
+        if (res.ok) {
+          closeModalAbono();
+          await loadApartados();
+          await loadWmsInventory();
+          // Abrir PDF con el nuevo saldo y cuota actualizada
+          window.open(`${API_BASE}/api/apartados/${id}/pdf`, '_blank');
+          mostrarToast("✅ Abono registrado con éxito. Comprobante PDF actualizado.", "success");
+        } else {
+          const err = await res.json().catch(() => ({}));
+          mostrarToast(err.detail || "Error al registrar abono", "error");
+        }
+      } catch(e) {
+        mostrarToast("Error de conexión al registrar abono.", "error");
       }
     }
 
@@ -5826,8 +5958,7 @@
 
     async function enviarPdfChatPrompt() {
       if (!selectedChatId) return;
-      const nombreDoc = prompt("Nombre o referencia del archivo PDF a compartir:", "Proforma_Oficial_Nexo.pdf");
-      if (!nombreDoc) return;
+      const nombreDoc = "Comprobante_Oficial_Nebulosa.pdf";
 
       await fetch(`${API_BASE}/api/crm/chats/${selectedChatId}/mensaje`, {
         method: "POST",
@@ -5847,8 +5978,7 @@
     // PIPELINE DE CIERRE: VENDIDO, RESUELTO, SEGUIMIENTO, PERDIDO
     async function marcarEstadoCierreLead(nuevoEstado) {
       if (!selectedChatId) return;
-      const nota = prompt(`Ingresa una nota ejecutiva de cierre para marcar el prospecto como ${nuevoEstado}:`, nuevoEstado === 'VENDIDO' ? "Venta cerrada y formalizada con éxito" : (nuevoEstado === 'RESUELTO' ? "Consulta atendida satisfactoriamente" : ""));
-      if (nota === null) return;
+      const nota = nuevoEstado === "VENDIDO" ? "Venta cerrada y formalizada con éxito" : (nuevoEstado === "RESUELTO" ? "Consulta atendida satisfactoriamente" : "Estado comercial actualizado");
 
       try {
         const res = await fetch(`${API_BASE}/api/crm/chats/${selectedChatId}/estado-cierre`, {
@@ -6051,10 +6181,18 @@
     }
 
     async function simularNuevoLeadPrompt() {
-      const nombre = prompt("Nombre del prospecto que escribe:", "Alejandro Castro");
-      if (!nombre) return;
-      const tel = prompt("Número de WhatsApp:", "+506 8765-4321") || "+506 8765-4321";
-      const primerMensaje = prompt("Mensaje entrante del cliente:", "Hola! Quisiera información de precios y disponibilidad") || "Hola!";
+      const nombresDemo = ["Alejandro Castro", "Valeria Morales", "Esteban Vargas", "Daniela Cordero"];
+      const telsDemo = ["+506 8765-4321", "+506 8999-1122", "+506 7011-2233", "+506 6122-3344"];
+      const msgsDemo = [
+        "Hola! Quisiera cotizar prendas y consultar disponibilidad de tallas.",
+        "Buenas tardes, me interesa apartar un Hoodie y pantalón cargo.",
+        "Hola, me podrían enviar el catálogo y precios por favor?",
+        "Buenas! Tienen envíos disponibles a todo el país?"
+      ];
+      const idx = Math.floor(Math.random() * nombresDemo.length);
+      const nombre = nombresDemo[idx];
+      const tel = telsDemo[idx];
+      const primerMensaje = msgsDemo[idx];
 
       const res = await fetch(`${API_BASE}/api/crm/chats/nuevo-lead`, {
         method: "POST",

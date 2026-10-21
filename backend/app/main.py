@@ -34,12 +34,14 @@ UPLOADS_DIR = BASE_DIR / "backend" / "uploads"
 PROD_UPLOADS_DIR = UPLOADS_DIR / "productos"
 PDF_DIR = BASE_DIR / "01_Core_Facturacion" / "facturas_pdf"
 PROFORMAS_DIR = BASE_DIR / "01_Core_Facturacion" / "proformas_pdf"
+APARTADOS_DIR = BASE_DIR / "01_Core_Facturacion" / "apartados_pdf"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 PROD_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 PDF_DIR.mkdir(parents=True, exist_ok=True)
 PROFORMAS_DIR.mkdir(parents=True, exist_ok=True)
+APARTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
 DB_PATH = DATA_DIR / "nexo_retail.db"
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
@@ -287,6 +289,11 @@ def check_sqlite_schema():
             conn.commit()
         except Exception:
             pass
+        try:
+            conn.execute(text("ALTER TABLE apartados ADD COLUMN pdf_ruta VARCHAR(255)"))
+            conn.commit()
+        except Exception:
+            pass
 
 check_sqlite_schema()
 
@@ -422,11 +429,11 @@ def get_db():
         db.close()
 
 try:
-    from backend.app.services.factura_pdf_service import generar_pdf_factura, enviar_factura_correo
+    from backend.app.services.factura_pdf_service import generar_pdf_factura, generar_pdf_apartado, enviar_factura_correo
     from backend.app.services.gemini_analytics_service import analizar_tendencias_wms_con_gemini
     from backend.app.services.reporte_excel_service import generar_reporte_excel_completo
 except ImportError:
-    from app.services.factura_pdf_service import generar_pdf_factura, enviar_factura_correo
+    from app.services.factura_pdf_service import generar_pdf_factura, generar_pdf_apartado, enviar_factura_correo
     from app.services.gemini_analytics_service import analizar_tendencias_wms_con_gemini
     from app.services.reporte_excel_service import generar_reporte_excel_completo
 
@@ -1487,9 +1494,84 @@ def resolver_ruta_pdf_proforma(prof, db: Session) -> str:
     db.commit()
     return nueva_ruta
 
+
+def resolver_ruta_pdf_apartado(apt, db: Session) -> str:
+    if getattr(apt, 'pdf_ruta', None) and os.path.exists(apt.pdf_ruta):
+        return apt.pdf_ruta
+    nombre_apt = f"Apartado_{apt.consecutivo}.pdf"
+    candidatos = [
+        APARTADOS_DIR / nombre_apt,
+        PDF_DIR / nombre_apt,
+        PROFORMAS_DIR / nombre_apt
+    ]
+    for c in candidatos:
+        if c.exists():
+            try:
+                apt.pdf_ruta = str(c)
+                db.commit()
+            except Exception:
+                pass
+            return str(c)
+
+    config = db.query(DBConfiguracion).first()
+    items = []
+    try:
+        items = json.loads(apt.items_json) if apt.items_json else []
+    except Exception:
+        items = []
+
+    abonos_db = db.query(DBAbonoApartado).filter(DBAbonoApartado.apartado_id == apt.id).order_by(DBAbonoApartado.fecha.asc()).all()
+    abonos_list = []
+    for ab in abonos_db:
+        abonos_list.append({
+            "fecha": ab.fecha.strftime("%d/%m/%Y %H:%M") if ab.fecha else "-",
+            "metodo_pago": ab.metodo_pago or "SINPE_MOVIL",
+            "numero_comprobante": ab.numero_comprobante or "S/C",
+            "monto": ab.monto or 0.0
+        })
+
+    fecha_lim_str = apt.fecha_limite.strftime("%d/%m/%Y") if apt.fecha_limite else "30 días a partir de la emisión"
+
+    datos_pdf = {
+        "consecutivo": apt.consecutivo,
+        "fecha": apt.fecha_creacion.strftime("%d/%m/%Y %H:%M") if apt.fecha_creacion else datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "fecha_limite": fecha_lim_str,
+        "vendedor_nombre": apt.vendedor_nombre or "Carlos Méndez",
+        "tienda": {
+            "nombre": config.nombre_tienda if config else "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
+            "cedula": config.cedula_fiscal if config else "3-101-948271",
+            "telefono": config.telefono if config else "+506 8888-8888",
+            "direccion": config.direccion if config else "San José, Costa Rica",
+            "actividad": config.codigo_actividad if config else "477101 - Venta prendas"
+        },
+        "cliente": {
+            "nombre": apt.cliente_nombre or "Cliente",
+            "cedula": apt.cliente_cedula or "N/A",
+            "telefono": apt.cliente_telefono or "N/A"
+        },
+        "estado": apt.estado or "PENDIENTE",
+        "notas": apt.notas or "Apartado registrado en el sistema",
+        "lineas": items,
+        "total": apt.total or 0.0,
+        "saldo_pendiente": apt.saldo_pendiente if apt.saldo_pendiente is not None else 0.0,
+        "abonos": abonos_list
+    }
+    nueva_ruta = generar_pdf_apartado(datos_pdf)
+    try:
+        apt.pdf_ruta = nueva_ruta
+        db.commit()
+    except Exception:
+        pass
+    return nueva_ruta
+
 @app.get("/api/pos/facturas/{factura_id}/pdf")
-def descargar_factura_pdf(factura_id: int, db: Session = Depends(get_db)):
-    fac = db.query(DBFactura).filter(DBFactura.id == factura_id).first()
+@app.get("/api/facturas/{factura_id}/pdf")
+def descargar_factura_pdf(factura_id: str, db: Session = Depends(get_db)):
+    fac = None
+    if str(factura_id).isdigit():
+        fac = db.query(DBFactura).filter(DBFactura.id == int(factura_id)).first()
+    if not fac:
+        fac = db.query(DBFactura).filter(DBFactura.consecutivo == str(factura_id)).first()
     if not fac:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
     ruta = resolver_ruta_pdf_factura(fac, db)
@@ -1668,8 +1750,13 @@ def actualizar_alarma_proforma(prof_id: int, req: AlarmaUpdateRequest, db: Sessi
     return {"status": "ok", "id": prof.id, "alarma_activa": prof.alarma_activa}
 
 @app.get("/api/proformas/{prof_id}/pdf")
-def descargar_proforma_pdf(prof_id: int, db: Session = Depends(get_db)):
-    prof = db.query(DBProformaSeguimiento).filter(DBProformaSeguimiento.id == prof_id).first()
+@app.get("/api/pos/proformas/{prof_id}/pdf")
+def descargar_proforma_pdf(prof_id: str, db: Session = Depends(get_db)):
+    prof = None
+    if str(prof_id).isdigit():
+        prof = db.query(DBProformaSeguimiento).filter(DBProformaSeguimiento.id == int(prof_id)).first()
+    if not prof:
+        prof = db.query(DBProformaSeguimiento).filter(DBProformaSeguimiento.consecutivo == str(prof_id)).first()
     if not prof:
         raise HTTPException(status_code=404, detail="Proforma no encontrada")
     ruta = resolver_ruta_pdf_proforma(prof, db)
@@ -1838,6 +1925,20 @@ def registrar_abono_apartado(apartado_id: int, req: RegistrarAbonoRequest, db: S
         "saldo_pendiente": apt.saldo_pendiente,
         "estado": apt.estado
     }
+
+
+@app.get("/api/apartados/{apartado_id}/pdf")
+@app.get("/api/pos/apartados/{apartado_id}/pdf")
+def descargar_apartado_pdf(apartado_id: str, db: Session = Depends(get_db)):
+    apt = None
+    if str(apartado_id).isdigit():
+        apt = db.query(DBApartado).filter(DBApartado.id == int(apartado_id)).first()
+    if not apt:
+        apt = db.query(DBApartado).filter(DBApartado.consecutivo == str(apartado_id)).first()
+    if not apt:
+        raise HTTPException(status_code=404, detail="Apartado no encontrado")
+    ruta = resolver_ruta_pdf_apartado(apt, db)
+    return FileResponse(ruta, media_type="application/pdf", filename=f"Apartado_{apt.consecutivo}.pdf")
 
 @app.delete("/api/apartados/{apartado_id}")
 def eliminar_apartado(apartado_id: int, db: Session = Depends(get_db)):

@@ -270,3 +270,256 @@ def enviar_factura_correo(destinatario: str, ruta_pdf: str, datos_tienda: dict, 
     except Exception as e:
         print(f"[ERROR SMTP] No se pudo enviar el correo: {e}")
         return False
+
+
+def generar_pdf_apartado(datos_apartado: dict) -> str:
+    """
+    Genera un comprobante oficial de Apartado y Control de Cuotas con el mismo
+    diseño y formato profesional en Blanco, Negro y Acentos en Rojo que las facturas y proformas.
+    Retorna la ruta absoluta del archivo generado.
+    """
+    consecutivo = datos_apartado.get("consecutivo", "APT-00001")
+    fecha_str = datos_apartado.get("fecha", datetime.now().strftime("%d/%m/%Y %H:%M"))
+    fecha_limite_str = datos_apartado.get("fecha_limite", "30 días a partir de la emisión")
+    nombre_archivo = f"Apartado_{consecutivo}.pdf"
+    
+    apartados_dir = PDF_OUTPUT_DIR.parent / "apartados_pdf"
+    apartados_dir.mkdir(parents=True, exist_ok=True)
+    ruta_pdf = str(apartados_dir / nombre_archivo)
+    
+    doc = SimpleDocTemplate(
+        ruta_pdf,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+    
+    styles = getSampleStyleSheet()
+    style_normal = styles['Normal']
+    style_normal.textColor = COLOR_NEGRO
+    
+    story = []
+    
+    # 1. ENCABEZADO: TIENDA & CONSECUTIVO EN ROJO
+    tienda = datos_apartado.get("tienda", {})
+    header_data = [
+        [
+            Paragraph(
+                f"<b><font size='16' color='#111827'>{tienda.get('nombre', 'NEBULOSA | RETAIL')}</font></b><br/>"
+                f"<font size='9' color='#4B5563'>Cédula Jurídica: {tienda.get('cedula', '3-101-948271')}<br/>"
+                f"Teléfono: {tienda.get('telefono', '+506 8888-8888')}<br/>"
+                f"Dirección: {tienda.get('direccion', 'San José, Costa Rica')}<br/>"
+                f"Actividad Económica: {tienda.get('actividad', '477101 - Venta al por menor de prendas')}</font>",
+                style_normal
+            ),
+            Paragraph(
+                f"<b><font size='12' color='#111827'>CONTROL DE APARTADO Y CUOTAS</font></b><br/>"
+                f"<b><font size='14' color='#DC2626'>N° {consecutivo}</font></b><br/>"
+                f"<font size='8' color='#4B5563'>Fecha Emisión: {fecha_str}<br/>"
+                f"<b>Fecha Límite Retiro: {fecha_limite_str}</b><br/>"
+                f"Vendedor: {datos_apartado.get('vendedor_nombre', 'Vendedor de Turno')}</font>",
+                style_normal
+            )
+        ]
+    ]
+    t_header = Table(header_data, colWidths=[320, 220])
+    t_header.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+    ]))
+    story.append(t_header)
+    story.append(Spacer(1, 14))
+    
+    # 2. DATOS DEL CLIENTE Y ESTADO DEL PLAN
+    cliente = datos_apartado.get("cliente", {})
+    estado_str = str(datos_apartado.get("estado", "PENDIENTE")).upper()
+    is_liquidado = estado_str == "LIQUIDADO"
+    badge_estado = (
+        "<font color='#059669'><b>100% LIQUIDADO (ENTREGAR PRENDAS)</b></font>"
+        if is_liquidado
+        else "<font color='#D97706'><b>ACTIVO (PENDIENTE DE SALDO)</b></font>"
+    )
+    
+    cli_info = [
+        [
+            Paragraph("<b><font size='9' color='#111827'>DATOS DEL TITULAR / CLIENTE</font></b>", style_normal),
+            Paragraph("<b><font size='9' color='#111827'>ESTADO DEL PLAN DE APARTADO</font></b>", style_normal)
+        ],
+        [
+            Paragraph(
+                f"<font size='9' color='#1F2937'><b>Nombre:</b> {cliente.get('nombre', 'Cliente General')}<br/>"
+                f"<b>Cédula:</b> {cliente.get('cedula', 'N/A')} &nbsp;|&nbsp; <b>Tel:</b> {cliente.get('telefono', 'N/A')}<br/>"
+                f"<b>Notas / Observaciones:</b> {datos_apartado.get('notas', 'Sin observaciones adicionales')}</font>",
+                style_normal
+            ),
+            Paragraph(
+                f"<font size='9' color='#1F2937'><b>Condición:</b> {badge_estado}<br/>"
+                f"<b>Plazo Otorgado:</b> 30 días hábiles<br/>"
+                f"<font size='8' color='#6B7280'>Moneda Oficial: CRC (Colones Costarricenses)</font></font>",
+                style_normal
+            )
+        ]
+    ]
+    t_cli = Table(cli_info, colWidths=[320, 220])
+    t_cli.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F9FAFB")),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_BORDE),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('PADDING', (0,0), (-1,-1), 7),
+    ]))
+    story.append(t_cli)
+    story.append(Spacer(1, 14))
+    
+    # 3. TABLA DE PRENDAS RESERVADAS
+    lineas = datos_apartado.get("lineas", [])
+    table_rows = [
+        [
+            Paragraph("<b><font size='8' color='#111827'>Código / SKU</font></b>", style_normal),
+            Paragraph("<b><font size='8' color='#111827'>Prenda Reservada en Bodega</font></b>", style_normal),
+            Paragraph("<b><font size='8' color='#111827'>Cant.</font></b>", style_normal),
+            Paragraph("<b><font size='8' color='#111827'>Precio Unit.</font></b>", style_normal),
+            Paragraph("<b><font size='8' color='#111827'>Subtotal</font></b>", style_normal)
+        ]
+    ]
+    
+    for item in lineas:
+        talla_val = item.get('talla', '')
+        color_val = item.get('color', '')
+        detalles = []
+        if talla_val and talla_val not in ['-', 'N/A', 'General']:
+            detalles.append(f"Talla: {talla_val}")
+        if color_val and color_val not in ['-', 'N/A', 'Único']:
+            detalles.append(f"Color: {color_val}")
+        det_str = f"<br/><font size='7.5' color='#6B7280'>{' | '.join(detalles)}</font>" if detalles else ""
+        
+        cant = item.get('cantidad', 1)
+        pu = float(item.get('precio', item.get('precio_unitario', 0)))
+        sub = cant * pu
+        table_rows.append([
+            Paragraph(f"<font size='8' color='#4B5563'><b>{item.get('sku', 'N/A')}</b></font>", style_normal),
+            Paragraph(f"<b><font size='8' color='#111827'>{item.get('nombre', 'Artículo')}</font></b>{det_str}", style_normal),
+            Paragraph(f"<font size='8'>{cant}</font>", style_normal),
+            Paragraph(f"<font size='8'>CRC {pu:,.2f}</font>", style_normal),
+            Paragraph(f"<font size='8'><b>CRC {sub:,.2f}</b></font>", style_normal)
+        ])
+        
+    t_items = Table(table_rows, colWidths=[85, 235, 45, 90, 85])
+    t_items.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#F3F4F6")),
+        ('LINEBELOW', (0,0), (-1,0), 1.5, COLOR_NEGRO),
+        ('ALIGN', (2,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_BORDE),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_NEGRO),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(t_items)
+    story.append(Spacer(1, 14))
+    
+    # 4. RESUMEN FINANCIERO: TOTAL, ABONOS Y SALDO PENDIENTE
+    total = float(datos_apartado.get("total", 0.0))
+    saldo_pendiente = float(datos_apartado.get("saldo_pendiente", 0.0))
+    total_abonado = max(0.0, total - saldo_pendiente)
+    
+    tot_data = [
+        [
+            Paragraph("<font size='8.5' color='#4B5563'>Total Prendas Apartadas:</font>", style_normal),
+            Paragraph(f"<font size='8.5' color='#111827'>CRC {total:,.2f}</font>", style_normal)
+        ],
+        [
+            Paragraph("<b><font size='8.5' color='#059669'>Total Abonado a la Fecha:</font></b>", style_normal),
+            Paragraph(f"<b><font size='8.5' color='#059669'>CRC {total_abonado:,.2f}</font></b>", style_normal)
+        ]
+    ]
+    
+    if saldo_pendiente > 0:
+        tot_data.append([
+            Paragraph("<b><font size='10' color='#DC2626'>SALDO PENDIENTE POR PAGAR:</font></b>", style_normal),
+            Paragraph(f"<b><font size='10' color='#DC2626'>CRC {saldo_pendiente:,.2f}</font></b>", style_normal)
+        ])
+    else:
+        tot_data.append([
+            Paragraph("<b><font size='10' color='#059669'>ESTADO FINAL:</font></b>", style_normal),
+            Paragraph("<b><font size='10' color='#059669'>100% CANCELADO</font></b>", style_normal)
+        ])
+        
+    t_tot = Table(tot_data, colWidths=[160, 110])
+    t_tot.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor("#F3F4F6")),
+        ('BOX', (0,-1), (-1,-1), 1.2, COLOR_NEGRO),
+        ('LINEABOVE', (0,-1), (-1,-1), 1, COLOR_NEGRO),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    wrapper_tot = Table([["", t_tot]], colWidths=[270, 270])
+    story.append(wrapper_tot)
+    story.append(Spacer(1, 14))
+    
+    # 5. TABLA DE HISTORIAL DE ABONOS Y CUOTAS SUCESIVAS
+    abonos = datos_apartado.get("abonos", [])
+    story.append(Paragraph("<b><font size='9' color='#111827'>HISTORIAL DETALLADO DE ABONOS Y CUOTAS</font></b>", style_normal))
+    story.append(Spacer(1, 4))
+    
+    abonos_rows = [
+        [
+            Paragraph("<b><font size='7.5' color='#111827'>#</font></b>", style_normal),
+            Paragraph("<b><font size='7.5' color='#111827'>Fecha y Hora</font></b>", style_normal),
+            Paragraph("<b><font size='7.5' color='#111827'>Medio de Pago</font></b>", style_normal),
+            Paragraph("<b><font size='7.5' color='#111827'>Comprobante / Ref</font></b>", style_normal),
+            Paragraph("<b><font size='7.5' color='#111827'>Monto Cuota</font></b>", style_normal),
+            Paragraph("<b><font size='7.5' color='#111827'>Saldo Restante</font></b>", style_normal),
+        ]
+    ]
+    
+    if abonos:
+        saldo_acum = total
+        for idx, ab in enumerate(abonos, 1):
+            monto_cuota = float(ab.get('monto', 0.0))
+            saldo_acum = max(0.0, saldo_acum - monto_cuota)
+            abonos_rows.append([
+                Paragraph(f"<font size='7.5'>{idx}</font>", style_normal),
+                Paragraph(f"<font size='7.5'>{ab.get('fecha', '-')}</font>", style_normal),
+                Paragraph(f"<font size='7.5'><b>{ab.get('metodo_pago', 'SINPE_MOVIL')}</b></font>", style_normal),
+                Paragraph(f"<font size='7.5'>{ab.get('numero_comprobante', 'S/C')}</font>", style_normal),
+                Paragraph(f"<font size='7.5' color='#059669'><b>+CRC {monto_cuota:,.2f}</b></font>", style_normal),
+                Paragraph(f"<font size='7.5'>CRC {saldo_acum:,.2f}</font>", style_normal),
+            ])
+    else:
+        abonos_rows.append([
+            Paragraph("<font size='7.5' color='#6B7280'>1</font>", style_normal),
+            Paragraph(f"<font size='7.5' color='#6B7280'>{fecha_str}</font>", style_normal),
+            Paragraph("<font size='7.5' color='#6B7280'>APERTURA</font>", style_normal),
+            Paragraph("<font size='7.5' color='#6B7280'>REGISTRO INICIAL</font>", style_normal),
+            Paragraph(f"<font size='7.5' color='#059669'><b>+CRC {total_abonado:,.2f}</b></font>", style_normal),
+            Paragraph(f"<font size='7.5'>CRC {saldo_pendiente:,.2f}</font>", style_normal),
+        ])
+        
+    t_abonos = Table(abonos_rows, colWidths=[25, 115, 110, 110, 90, 90])
+    t_abonos.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#F9FAFB")),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_BORDE),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_BORDE),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_abonos)
+    story.append(Spacer(1, 14))
+    
+    # 6. TERMINOS Y CONDICIONES DEL APARTADO
+    story.append(HRFlowable(width="100%", thickness=1, color=COLOR_BORDE))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(
+        "<font size='7' color='#6B7280'>"
+        "<b>TERMINOS Y POLITICAS DE APARTADO:</b><br/>"
+        "1. Las prendas detalladas quedan bajo custodia y reserva exclusiva hasta la fecha limite estipulada.<br/>"
+        "2. Para retirar sus articulos o registrar nuevos abonos, favor presentar este comprobante o su documento de identificacion.<br/>"
+        "3. Al liquidar el 100% del saldo, se entrega el articulo y se emite la factura electronica correspondiente. Gracias por su preferencia.<br/>"
+        "NEBULOSA | INGENIERIA & AUTOMATIZACION - Software Empresarial PRO</font>",
+        style_normal
+    ))
+    
+    doc.build(story)
+    return ruta_pdf
