@@ -2390,68 +2390,79 @@ def purgar_sistema_produccion(req: PurgeRequest, db: Session = Depends(get_db)):
             detail="ACCESO DENEGADO: PIN Maestro incorrecto o usuario no autorizado."
         )
 
-    from sqlalchemy import text
     tablas_limpiadas = []
 
-    # Purgar Ventas y Facturas Demo
+    # 1. Purgar Ventas y Facturas Demo
     if req.purgar_ventas:
-        db.execute(text("DELETE FROM facturas"))
-        tablas_limpiadas.append("facturas")
+        try:
+            db.query(DBFactura).delete()
+            tablas_limpiadas.append("facturas")
+        except Exception as e:
+            print("Error purgar facturas:", e)
 
-    # Purgar Proformas Demo
+    # 2. Purgar Proformas Demo
     if req.purgar_proformas:
-        db.execute(text("DELETE FROM proformas"))
-        tablas_limpiadas.append("proformas")
+        try:
+            db.query(DBProformaSeguimiento).delete()
+            tablas_limpiadas.append("proformas_seguimiento")
+        except Exception as e:
+            print("Error purgar proformas:", e)
 
-    # Purgar Apartados y Cuotas Demo
+    # 3. Purgar Apartados y Abonos Demo
     if req.purgar_apartados:
         try:
-            db.execute(text("DELETE FROM apartados_cuotas"))
+            db.query(DBAbonoApartado).delete()
         except Exception:
             pass
         try:
-            db.execute(text("DELETE FROM apartados"))
-        except Exception:
-            pass
-        tablas_limpiadas.append("apartados")
+            db.query(DBApartado).delete()
+            tablas_limpiadas.append("apartados_y_abonos")
+        except Exception as e:
+            print("Error purgar apartados:", e)
 
-    # Purgar Productos WMS Demo
+    # 4. Purgar Productos WMS Demo
     if req.purgar_wms:
-        db.execute(text("DELETE FROM productos_wms"))
-        tablas_limpiadas.append("productos_wms")
+        try:
+            db.query(DBProductoWMS).delete()
+            tablas_limpiadas.append("productos_wms")
+        except Exception as e:
+            print("Error purgar productos_wms:", e)
 
-    # Purgar Gastos Operativos Demo
+    # 5. Purgar Gastos Operativos Demo
     if req.purgar_gastos:
-        db.execute(text("DELETE FROM gastos_tienda"))
-        tablas_limpiadas.append("gastos_tienda")
+        try:
+            db.query(DBGastoTienda).delete()
+            tablas_limpiadas.append("gastos_tienda")
+        except Exception as e:
+            print("Error purgar gastos_tienda:", e)
 
-    # Purgar Compras y Ajustes de Stock Demo
+    # 6. Purgar Compras y Ajustes de Stock Demo
     if req.purgar_compras:
         try:
-            db.execute(text("DELETE FROM compras"))
+            db.query(DBFacturaCompra).delete()
         except Exception:
             pass
         try:
-            db.execute(text("DELETE FROM inventario_ajustes"))
+            db.query(DBAjusteInventario).delete()
         except Exception:
             pass
         tablas_limpiadas.append("compras_y_ajustes")
 
-    # Purgar Chats de CRM Demo
+    # 7. Purgar Chats de CRM Demo
     if req.purgar_crm:
         try:
-            db.execute(text("DELETE FROM crm_chats"))
-        except Exception:
-            pass
-        tablas_limpiadas.append("crm_chats")
+            db.query(DBChatLead).delete()
+            tablas_limpiadas.append("crm_chats")
+        except Exception as e:
+            print("Error purgar crm_chats:", e)
 
-    # Purgar Proveedores si se solicita
+    # 8. Purgar Proveedores si se solicita
     if req.purgar_proveedores:
         try:
-            db.execute(text("DELETE FROM proveedores"))
+            db.query(DBProveedor).delete()
             tablas_limpiadas.append("proveedores")
-        except Exception:
-            pass
+        except Exception as e:
+            print("Error purgar proveedores:", e)
 
     # Asegurar que el usuario maestro del dueño esté intacto
     db.commit()

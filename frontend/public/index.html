@@ -2619,6 +2619,7 @@
         <label class="block text-[11px] font-bold text-slate-300 uppercase">Ingresa tu PIN Maestro de Dueño:</label>
         <div class="relative">
           <input type="password" id="purga-in-pin" placeholder="PIN Maestro" maxlength="6"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();ejecutarPurgaSistema();}"
             class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-red-400 font-bold" />
         </div>
       </div>
@@ -3541,18 +3542,21 @@
       cerrarModalGenerico('modal-purga-sistema');
     };
 
+    let isPurgingSystem = false;
     window.ejecutarPurgaSistema = async function() {
-      const inPin = document.getElementById('purga-in-pin').value.trim();
+      if (isPurgingSystem) return;
+      const inPinEl = document.getElementById('purga-in-pin');
+      const inPin = inPinEl ? inPinEl.value.trim() : '';
       if (!inPin) {
-        alert("Por favor ingresa tu PIN Maestro para autorizar.");
+        mostrarToast("⚠️ Por favor ingresa tu PIN Maestro para autorizar.", "warning");
         return;
       }
 
-      // Confirmación directa desde el modal de purga con PIN
-
-
       const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
       const uName = sesion.username || 'isanchez';
+
+      isPurgingSystem = true;
+      mostrarToast("⏳ Purgando base de datos y limpiando registros demo...", "info");
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/purgar-sistema`, {
@@ -3572,10 +3576,10 @@
           })
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (res.ok && data.status === 'success') {
           cerrarModalPurgaSistema();
-          alert("🎉 ¡SISTEMA PURGADO CON ÉXITO!\n\nTodos los datos de prueba han sido eliminados.\nNEBULOSA OS está 100% limpio y listo para registrar mercadería y ventas reales.");
+          mostrarToast("🎉 ¡SISTEMA PURGADO CON ÉXITO! Todos los datos demo fueron limpiados.", "success");
           if (typeof loadWmsInventory === 'function') await loadWmsInventory();
           if (typeof loadHistorialFacturas === 'function') await loadHistorialFacturas();
           if (typeof loadProformas === 'function') await loadProformas();
@@ -3584,11 +3588,13 @@
           if (typeof loadFinanzasResumen === 'function') await loadFinanzasResumen();
           if (typeof switchTab === 'function') switchTab('wms');
         } else {
-          alert("❌ Error: " + (data.detail || "PIN incorrecto o no autorizado."));
+          mostrarToast("❌ " + (data.detail || "PIN incorrecto o no autorizado para purgar."), "error");
         }
       } catch (err) {
         console.error("Error al purgar sistema:", err);
-        alert("Error de conexión al purgar el sistema.");
+        mostrarToast("❌ Error al comunicarse con el servidor al purgar el sistema.", "error");
+      } finally {
+        isPurgingSystem = false;
       }
     };
 
