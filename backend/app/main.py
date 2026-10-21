@@ -1064,7 +1064,8 @@ def responder_chat_crm(chat_id: int, req: ChatInteraccionRequest, db: Session = 
     return chat
 
 class EstadoCierreRequest(BaseModel):
-    estado: str # VENDIDO, RESUELTO, PERDIDO, SEGUIMIENTO
+    estado: Optional[str] = None
+    nuevo_estado: Optional[str] = None
     nota: Optional[str] = ""
 
 @app.put("/api/crm/chats/{chat_id}/estado")
@@ -1074,9 +1075,10 @@ def actualizar_estado_cierre_crm(chat_id: int, req: EstadoCierreRequest, db: Ses
     if not chat:
         raise HTTPException(status_code=404, detail="Chat no encontrado")
 
-    chat.estado = req.estado
+    st = req.estado or req.nuevo_estado or "SEGUIMIENTO"
+    chat.estado = st
     calif = json.loads(chat.datos_calificacion_json or "{}")
-    calif["estado_cierre"] = req.estado
+    calif["estado_cierre"] = st
     if req.nota:
         calif["nota_cierre"] = req.nota
     chat.datos_calificacion_json = json.dumps(calif)
