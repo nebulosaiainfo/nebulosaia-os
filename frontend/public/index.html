@@ -4,7 +4,344 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEBULOSA | INGENIERÍA & AUTOMATIZACIÓN</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com">
+    // ========================================================
+    // 🔐 SISTEMA DE AUTENTICACIÓN & SESIONES PRO
+    // ========================================================
+    let currentLoggedUser = null;
+
+    const DEFAULT_MODULES_CONFIG = [
+      { id: 'pos', name: 'Punto de Venta', icon: '🛒', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'wms', name: 'Bodega & WMS', icon: '📦', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
+      { id: 'proformas', name: 'Proformas', icon: '📋', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'apartados', name: 'Apartados & Cuotas', icon: '🗓️', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'proveedores', name: 'Proveedores & Marcas', icon: '🏭', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
+      { id: 'gastos', name: 'Gastos de Tienda', icon: '🧾', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'fiscal', name: 'Historial Facturas', icon: '💰', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'crm', name: 'WhatsApp & CRM', icon: '💬', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'ai', name: 'Auditoría IA', icon: '🧠', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'usuarios', name: 'Equipo & Roles', icon: '👥', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'custom', name: 'Configuración', icon: '⚙️', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true }
+    ];
+
+    let userModulesConfig = JSON.parse(localStorage.getItem('nebulosa_modules_config') || 'null');
+    if (!userModulesConfig || !Array.isArray(userModulesConfig)) {
+      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
+    }
+
+    async function ejecutarLogin(e) {
+      if (e) e.preventDefault();
+      const uInput = document.getElementById('login-username').value.trim();
+      const pInput = document.getElementById('login-password').value.trim();
+      const errBox = document.getElementById('login-error-msg');
+      const submitBtn = document.getElementById('btn-submit-login');
+
+      if (!uInput || !pInput) {
+        errBox.textContent = "Por favor ingresa usuario y contraseña o PIN.";
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "<span>⏳ Verificando credenciales...</span>";
+      errBox.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: uInput, password_or_pin: pInput })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          currentLoggedUser = data.usuario;
+          localStorage.setItem('nebulosa_session', JSON.stringify(currentLoggedUser));
+          localStorage.setItem('nebulosa_token', data.token);
+
+          // Ocultar pantalla de login
+          document.getElementById('auth-login-screen').classList.add('hidden');
+
+          // Actualizar UI con perfil
+          actualizarPerfilHeader();
+          renderModularNav();
+
+          // Abrir primer módulo permitido
+          const primerModulo = userModulesConfig.find(m => m.enabled && m.roles.includes(currentLoggedUser.rol));
+          if (primerModulo) switchTab(primerModulo.id);
+        } else {
+          errBox.textContent = data.detail || "Usuario o clave incorrectos.";
+          errBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error("Error en login:", err);
+        errBox.textContent = "Error de conexión al servidor NEBULOSA.";
+        errBox.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "<span>🚀 Ingresar al Sistema</span>";
+      }
+    }
+
+    function verificarSesionAlCargar() {
+      const sesionGuardada = localStorage.getItem('nebulosa_session');
+      const authScreen = document.getElementById('auth-login-screen');
+      if (sesionGuardada) {
+        try {
+          currentLoggedUser = JSON.parse(sesionGuardada);
+          if (authScreen) authScreen.classList.add('hidden');
+          actualizarPerfilHeader();
+          renderModularNav();
+          return;
+        } catch(e) {
+          localStorage.removeItem('nebulosa_session');
+        }
+      }
+      if (authScreen) authScreen.classList.remove('hidden');
+    }
+
+    function cerrarSesion() {
+      if (!confirm("¿Deseas cerrar tu sesión en NEBULOSA OS?")) return;
+      localStorage.removeItem('nebulosa_session');
+      localStorage.removeItem('nebulosa_token');
+      currentLoggedUser = null;
+      const authScreen = document.getElementById('auth-login-screen');
+      if (authScreen) {
+        document.getElementById('login-username').value = "";
+        document.getElementById('login-password').value = "";
+        authScreen.classList.remove('hidden');
+      }
+    }
+
+    function actualizarPerfilHeader() {
+      if (!currentLoggedUser) return;
+      const nameEl = document.getElementById('header-user-name');
+      const roleEl = document.getElementById('header-user-role');
+      const avatarEl = document.getElementById('user-avatar-circle');
+
+      if (nameEl) nameEl.textContent = currentLoggedUser.nombre_completo || currentLoggedUser.username;
+      if (roleEl) {
+        if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
+          roleEl.textContent = "👑 DUEÑO INTOCABLE";
+          roleEl.className = "text-[9px] text-amber-300 font-mono font-bold uppercase block";
+          if (avatarEl) {
+            avatarEl.innerHTML = "👑";
+            avatarEl.className = "w-6 h-6 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-amber-500/30";
+          }
+        } else {
+          roleEl.textContent = currentLoggedUser.rol;
+          roleEl.className = "text-[9px] text-cyan-300 font-mono font-bold uppercase block";
+          if (avatarEl) {
+            avatarEl.innerHTML = "👤";
+            avatarEl.className = "w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow";
+          }
+        }
+      }
+    }
+
+    // ========================================================
+    // 🧩 GESTOR DE MODULARIDAD & PRIORIDAD DE PESTAÑAS
+    // ========================================================
+    function renderModularNav() {
+      const container = document.getElementById('nav-modules-container');
+      if (!container) return;
+
+      const userRole = currentLoggedUser ? currentLoggedUser.rol : 'DUENO';
+      container.innerHTML = "";
+
+      userModulesConfig.forEach(mod => {
+        // Filtrar por rol y por estado habilitado
+        if (!mod.enabled) return;
+        if (userRole !== 'DUENO' && !mod.roles.includes(userRole)) return;
+
+        const btn = document.createElement('button');
+        btn.id = `tab-btn-${mod.id}`;
+        btn.onclick = () => switchTab(mod.id);
+        btn.className = "px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap";
+        btn.innerHTML = `<span>${mod.icon}</span> <span>${mod.name}</span>`;
+        container.appendChild(btn);
+      });
+    }
+
+    function abrirModalModular() {
+      const modal = document.getElementById('modal-organizar-modulos');
+      const lista = document.getElementById('lista-modulos-reordenar');
+      if (!modal || !lista) return;
+
+      lista.innerHTML = "";
+      userModulesConfig.forEach((mod, idx) => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800/80";
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="text-base">${mod.icon}</span>
+            <div>
+              <strong class="text-white text-xs block">${mod.name}</strong>
+              <span class="text-[10px] text-slate-500 font-mono">${mod.roles.join(', ')}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="moverModuloPrioridad(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▲</button>
+            <button onclick="moverModuloPrioridad(${idx}, 1)" ${idx === userModulesConfig.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▼</button>
+            <label class="relative inline-flex items-center cursor-pointer ml-2">
+              <input type="checkbox" ${mod.enabled ? 'checked' : ''} onchange="toggleModuloVisible(${idx}, this.checked)" class="sr-only peer">
+              <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+        `;
+        lista.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function cerrarModalModular() {
+      const modal = document.getElementById('modal-organizar-modulos');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function moverModuloPrioridad(index, dir) {
+      const nuevoIndex = index + dir;
+      if (nuevoIndex < 0 || nuevoIndex >= userModulesConfig.length) return;
+      const [item] = userModulesConfig.splice(index, 1);
+      userModulesConfig.splice(nuevoIndex, 0, item);
+      abrirModalModular();
+    }
+
+    function toggleModuloVisible(index, checked) {
+      if (userModulesConfig[index]) {
+        userModulesConfig[index].enabled = checked;
+      }
+    }
+
+    function guardarPreferenciaModulos() {
+      localStorage.setItem('nebulosa_modules_config', JSON.stringify(userModulesConfig));
+      renderModularNav();
+      cerrarModalModular();
+      alert("✅ ¡Organización y prioridades de módulos guardadas exitosamente!");
+    }
+
+    function restablecerModulosDefecto() {
+      if (!confirm("¿Restablecer la barra de módulos al orden original?")) return;
+      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
+      localStorage.removeItem('nebulosa_modules_config');
+      abrirModalModular();
+      renderModularNav();
+    }
+
+    // ========================================================
+    // 👥 CREDENCIALES AUTOMÁTICAS & BLINDAJE DE DUEÑO
+    // ========================================================
+    let lastCreatedUserCreds = null;
+
+    function generarPassAleatorio() {
+      return "Neb-" + Math.floor(1000 + Math.random() * 9000);
+    }
+    function generarPinAleatorio() {
+      return "" + Math.floor(1000 + Math.random() * 9000);
+    }
+
+    function autoCompletarCredencialesModal() {
+      const passField = document.getElementById('nuevo-usuario-password');
+      const pinField = document.getElementById('nuevo-usuario-pin');
+      if (passField) passField.value = generarPassAleatorio();
+      if (pinField) pinField.value = generarPinAleatorio();
+    }
+
+    function cerrarModalCredenciales() {
+      const m = document.getElementById('modal-credenciales-creadas');
+      if (m) {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      }
+    }
+
+    function copiarCredencialesAlPortapapeles() {
+      if (!lastCreatedUserCreds) return;
+      const texto = `🚀 *CREDENCIALES DE ACCESO - NEBULOSA OS*\n👤 *Nombre:* ${lastCreatedUserCreds.nombre}\n🔑 *Usuario:* ${lastCreatedUserCreds.usuario}\n🔒 *Contraseña:* ${lastCreatedUserCreds.password}\n⚡ *PIN de Caja/POS:* ${lastCreatedUserCreds.pin}\n💼 *Rol:* ${lastCreatedUserCreds.rol}\n🌐 *Enlace:* https://nebulosaia-os.onrender.com`;
+      navigator.clipboard.writeText(texto).then(() => {
+        alert("📋 ¡Credenciales copiadas al portapapeles listas para pegar en WhatsApp!");
+      });
+    }
+
+    function enviarCredencialesWhatsApp() {
+      if (!lastCreatedUserCreds) return;
+      const tel = prompt("Ingresa el número de WhatsApp del compañero (ej: 88887777):");
+      if (!tel) return;
+      const texto = `Hola ${lastCreatedUserCreds.nombre}! ⚡ Te compartimos tus accesos oficiales para *NEBULOSA OS*:\n\n👤 *Usuario:* ${lastCreatedUserCreds.usuario}\n🔒 *Contraseña:* ${lastCreatedUserCreds.password}\n⚡ *PIN Rápido:* ${lastCreatedUserCreds.pin}\n💼 *Rol:* ${lastCreatedUserCreds.rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
+      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
+    }
+
+
+    function autoGenerarCredencialesModal() {
+      const pinField = document.getElementById('usr-in-pin');
+      const passField = document.getElementById('usr-in-pass');
+      const userField = document.getElementById('usr-in-user');
+      const nombreField = document.getElementById('usr-in-nombre');
+
+      if (pinField) pinField.value = "" + Math.floor(1000 + Math.random() * 9000);
+      if (passField) passField.value = "Neb-" + Math.floor(1000 + Math.random() * 9000);
+      
+      if (nombreField && nombreField.value && userField && !userField.value) {
+        const pNombre = nombreField.value.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        userField.value = pNombre + "_" + Math.floor(10 + Math.random() * 90);
+      }
+    }
+
+
+    function abrirModalWhatsAppDirecto(tel = '', nombre = '', tipo = 'ticket') {
+      const modal = document.getElementById('modal-whatsapp-directo');
+      const inTel = document.getElementById('wa-in-telefono');
+      if (inTel) inTel.value = tel.replace(/[^0-9]/g, '');
+      aplicarPlantillaWA(tipo, nombre);
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function cerrarModalWhatsAppDirecto() {
+      const modal = document.getElementById('modal-whatsapp-directo');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function aplicarPlantillaWA(tipo, nombre = 'Cliente') {
+      const txt = document.getElementById('wa-in-mensaje');
+      if (!txt) return;
+      if (tipo === 'ticket') {
+        txt.value = `¡Hola ${nombre}! 👋 Gracias por tu compra en *NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN* ⚡.\n\nAdjuntamos el detalle de tu compra.\n¡Ha sido un placer atenderte! 🚀`;
+      } else if (tipo === 'apartado') {
+        txt.value = `Estimado(a) ${nombre}, te saludamos de *NEBULOSA* ⚡.\n\nTe recordamos que tienes un apartado activo en nuestra tienda con saldo pendiente.\n¿Deseas cancelarlo por SINPE Móvil o visitarnos en tienda?`;
+      } else if (tipo === 'proforma') {
+        txt.value = `Hola ${nombre}, un gusto saludarte de *NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN* ⚡.\n\nTe compartimos la cotización solicitada formalmente. Quedamos a tu entera disposición para cualquier consulta.`;
+      }
+    }
+
+    function dispararWhatsAppWebDirecto() {
+      const tel = document.getElementById('wa-in-telefono').value.trim().replace(/[^0-9]/g, '');
+      const msg = document.getElementById('wa-in-mensaje').value.trim();
+      if (!tel) {
+        alert("Por favor ingresa un número de teléfono válido.");
+        return;
+      }
+      if (!msg) {
+        alert("Por favor escribe o selecciona un mensaje.");
+        return;
+      }
+      const fullPhone = tel.length === 8 ? `506${tel}` : tel;
+      const url = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+      cerrarModalWhatsAppDirecto();
+    }
+
+</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -47,6 +384,67 @@
 <body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black">
 
   <!-- ======================================================== -->
+  <!-- 🔐 AUTH GATEWAY: PANTALLA DE LOGIN NEBULOSA PRO          -->
+  <!-- ======================================================== -->
+  <div id="auth-login-screen" class="fixed inset-0 z-[9999] bg-[#030712] flex items-center justify-center p-4">
+    <!-- Fondo tecnológico de partículas y aurora -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl"></div>
+    </div>
+
+    <div class="relative w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl">
+      <!-- Logo y Brand -->
+      <div class="text-center space-y-2 mb-8">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-cyan-400 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30 text-3xl font-extrabold text-white">
+          ⚡
+        </div>
+        <h2 class="text-xl font-extrabold text-white tracking-tight uppercase">NEBULOSA</h2>
+        <p class="text-xs font-semibold text-purple-300 tracking-wider uppercase">Ingeniería & Automatización</p>
+        <span class="inline-block mt-2 px-3 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono text-cyan-300">
+          SISTEMA EMPRESARIAL PRO • ACCESO SEGURO
+        </span>
+      </div>
+
+      <!-- Formulario de Login -->
+      <form id="form-login" onsubmit="ejecutarLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">Usuario o Cédula</label>
+          <div class="relative">
+            <input type="text" id="login-username" required placeholder="ej: lider_isaac o tu usuario"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
+            <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">👤</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">Contraseña o PIN Maestro</label>
+          <div class="relative">
+            <input type="password" id="login-password" required placeholder="Contraseña o PIN (ej: 7777)"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
+            <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">🔑</span>
+          </div>
+        </div>
+
+        <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center">
+        </div>
+
+        <button type="submit" id="btn-submit-login"
+          class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-sm shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2">
+          <span>🚀 Ingresar al Sistema</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800/80 text-center">
+        <p class="text-[11px] text-slate-500">
+          ¿Acceso por PIN rápido? Ingresa tu PIN de 4 dígitos (Dueño: <span class="text-cyan-400 font-bold">7777</span>).
+        </p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
   <!-- HEADER & BARRA SUPERIOR CON SWITCH DE ROLES -->
   <!-- ======================================================== -->
   <header class="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-40">
@@ -80,11 +478,26 @@
           <span>🎫 Reportar a Isaac</span>
         </button>
 
-        <!-- Selector de Rol (Vendedor vs Líder) -->
-        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs font-bold">
-          <button id="btn-role-seller" onclick="setRole('VENDEDOR')" class="px-3 py-1 rounded-lg text-slate-400 transition">Vendedor</button>
-          <button id="btn-role-leader" onclick="setRole('LIDER')" class="px-3 py-1 rounded-lg bg-purple-600 text-white shadow transition">Líder (Isaac)</button>
+
+        <!-- MÓDULOS MODULAR BUILDER & PERFIL PRO -->
+        <button onclick="abrirModalModular()" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition" title="Personalizar orden y prioridad de módulos">
+          <span>🧩 Módulos & Prioridad</span>
+        </button>
+
+        <!-- PERFIL DE USUARIO LOGUEADO -->
+        <div id="header-user-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
+          <div id="user-avatar-circle" class="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow">
+            👑
+          </div>
+          <div class="leading-tight text-left">
+            <span id="header-user-name" class="font-extrabold text-white text-xs block">Isaac (Dueño & Líder)</span>
+            <span id="header-user-role" class="text-[9px] text-purple-300 font-mono uppercase block">👑 DUEÑO INTOCABLE</span>
+          </div>
+          <button onclick="cerrarSesion()" class="ml-2 text-slate-400 hover:text-red-400 transition" title="Cerrar Sesión">
+            🚪
+          </button>
         </div>
+
 
         <!-- Botón Maestro Líder -->
         <button id="btn-master-panel" onclick="openMasterLeaderModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 flex items-center gap-1.5 transition">
@@ -100,7 +513,7 @@
   <!-- ======================================================== -->
   <main class="flex-1 max-w-[1720px] w-full mx-auto p-4 md:p-6 space-y-6">
 
-    <div class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
+    <div id="nav-modules-container" class="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto">
       <button onclick="switchTab('pos')" id="tab-btn-pos" class="tab-active px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap">
         🧾 <span>1. Punto de Venta (POS)</span>
       </button>
@@ -2056,6 +2469,7 @@
 
     // INICIALIZACIÓN
     window.addEventListener('DOMContentLoaded', async () => {
+      verificarSesionAlCargar();
       await init();
     });
 
@@ -3789,7 +4203,148 @@
           </head>
           <body onload="window.print(); window.close();">
             ${printContents}
-          </body>
+          
+  <!-- ======================================================== -->
+  <!-- 🧩 MODAL: PERSONALIZAR ORDEN Y PRIORIDAD DE MÓDULOS      -->
+  <!-- ======================================================== -->
+  <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <span>🧩</span> Prioridad & Modularidad del Sistema
+          </h3>
+          <p class="text-xs text-slate-400">Organiza qué módulos ves primero según la prioridad de tu jornada.</p>
+        </div>
+        <button onclick="cerrarModalModular()" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <div id="lista-modulos-reordenar" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+        <!-- Render dinámico de módulos con flechas arriba/abajo y toggle -->
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button onclick="restablecerModulosDefecto()" class="text-xs text-slate-400 hover:text-white transition">
+          ↺ Restaurar por defecto
+        </button>
+        <button onclick="guardarPreferenciaModulos()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-extrabold text-xs shadow-lg transition">
+          💾 Guardar Organización
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 📲 MODAL: CREDENCIALES GENERADAS PARA COMPAÑERO          -->
+  <!-- ======================================================== -->
+  <div id="modal-credenciales-creadas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl font-bold">
+        ✅
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-white">¡Usuario Creado Exitosamente!</h3>
+        <p class="text-xs text-slate-400">Credenciales listas para entregar a tu compañero de equipo:</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 font-mono text-xs">
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Nombre:</span>
+          <span id="cred-nombre" class="font-bold text-white"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Usuario:</span>
+          <span id="cred-user" class="font-bold text-cyan-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Contraseña:</span>
+          <span id="cred-pass" class="font-bold text-yellow-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">PIN Caja/POS:</span>
+          <span id="cred-pin" class="font-bold text-emerald-300"></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Rol Asignado:</span>
+          <span id="cred-rol" class="font-bold text-purple-300"></span>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="copiarCredencialesAlPortapapeles()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
+          <span>📋 Copiar Datos de Acceso</span>
+        </button>
+        <button onclick="enviarCredencialesWhatsApp()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
+          <span>📲 Enviar por WhatsApp</span>
+        </button>
+        <button onclick="cerrarModalCredenciales()" class="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- 📲 MODAL: WHATSAPP DIRECTO EMPRESARIAL NEBULOSA          -->
+  <!-- ======================================================== -->
+  <div id="modal-whatsapp-directo" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg font-bold">
+            💬
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-white">Enviar Mensaje por WhatsApp</h3>
+            <p class="text-[11px] text-slate-400">Canal directo NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN</p>
+          </div>
+        </div>
+        <button onclick="cerrarModalWhatsAppDirecto()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Teléfono del Cliente (WhatsApp):</label>
+          <div class="flex gap-2">
+            <span class="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-400 font-mono font-bold">+506</span>
+            <input type="tel" id="wa-in-telefono" placeholder="88887777" class="flex-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-emerald-400 font-mono text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Plantilla Rápida:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="aplicarPlantillaWA('ticket')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              🧾 Comprobante
+            </button>
+            <button type="button" onclick="aplicarPlantillaWA('apartado')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              🗓️ Cobro Apartado
+            </button>
+            <button type="button" onclick="aplicarPlantillaWA('proforma')" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition">
+              📋 Cotización
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mensaje a Enviar:</label>
+          <textarea id="wa-in-mensaje" rows="5" placeholder="Escribe el mensaje aquí..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-emerald-400 font-sans text-xs leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button onclick="cerrarModalWhatsAppDirecto()" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs">
+          Cancelar
+        </button>
+        <button onclick="dispararWhatsAppWebDirecto()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 flex items-center gap-1.5 transition">
+          <span>🚀 Abrir WhatsApp & Enviar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</body>
         </html>
       `);
       win.document.close();
@@ -4120,6 +4675,96 @@
       }
     }
 
+        function renderUsuarios() {
+      const tbody = document.getElementById('usuarios-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      usuariosList.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-900/50 transition";
+        const permObj = JSON.parse(u.permisos_json || "{}");
+        const activePerms = Object.keys(permObj).filter(k => permObj[k]).map(k => `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[9px] mr-1">${k}</span>`).join('') || '<span class="text-slate-600 text-[10px]">Sin permisos extras</span>';
+
+        const isMaster = (u.is_master === 1 || u.rol === 'DUENO' || u.username === 'lider_isaac' || u.id === 1);
+
+        tr.innerHTML = `
+          <td class="p-3">
+            <div class="flex items-center gap-2">
+              <strong class="text-white block text-xs">${u.nombre_completo}</strong>
+              ${isMaster ? '<span class="text-xs" title="Cuenta Maestra Intocable">🔒</span>' : ''}
+            </div>
+            <span class="text-[10px] text-cyan-400 font-mono">@${u.username}</span>
+          </td>
+          <td class="p-3">
+            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isMaster ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : u.rol === 'JEFE_BODEGA' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-purple-500/20 text-purple-300'}">${isMaster ? '👑 DUEÑO & LÍDER' : u.rol}</span>
+          </td>
+          <td class="p-3 font-mono font-bold text-slate-400 tracking-widest text-xs">${u.pin_seguridad || '••••'}</td>
+          <td class="p-3">${activePerms}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.activo ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">
+              ${u.activo ? 'ACTIVO' : 'INACTIVO'}
+            </span>
+          </td>
+          <td class="p-3 text-right">
+            ${isMaster 
+              ? '<span class="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold">👑 INTOCABLE</span>'
+              : `<button onclick="eliminarUsuarioReal(${u.id}, '${u.username}')" class="px-2.5 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold transition">🗑️ Eliminar</button>`
+            }
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModalNuevoUsuario() { document.getElementById('modal-nuevo-usuario').classList.remove('hidden'); }
+    function closeModalNuevoUsuario() { document.getElementById('modal-nuevo-usuario').classList.add('hidden'); }
+
+    function autoConfigurarPermisosPorRol(rol) {
+      const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+      if (rol === 'DUENO') {
+        ['perm-pos', 'perm-wms', 'perm-crm', 'perm-apartados', 'perm-costos', 'perm-eliminar', 'perm-ajustes', 'perm-gastos'].forEach(id => setCheck(id, true));
+      } else if (rol === 'JEFE_BODEGA') {
+        setCheck('perm-pos', false);
+        setCheck('perm-wms', true);
+        setCheck('perm-crm', false);
+        setCheck('perm-apartados', false);
+        setCheck('perm-costos', true);
+        setCheck('perm-eliminar', false);
+        setCheck('perm-ajustes', true);
+        setCheck('perm-gastos', false);
+      } else if (rol === 'VENDEDOR') {
+        setCheck('perm-pos', true);
+        setCheck('perm-wms', false);
+        setCheck('perm-crm', false);
+        setCheck('perm-apartados', true);
+        setCheck('perm-costos', false);
+        setCheck('perm-eliminar', false);
+        setCheck('perm-ajustes', false);
+        setCheck('perm-gastos', false);
+      } else if (rol === 'ASESOR_CRM') {
+        setCheck('perm-pos', false);
+        setCheck('perm-wms', false);
+        setCheck('perm-crm', true);
+        setCheck('perm-apartados', true);
+        setCheck('perm-costos', false);
+        setCheck('perm-eliminar', false);
+        setCheck('perm-ajustes', false);
+        setCheck('perm-gastos', false);
+      }
+    }
+
+    async function loadUsuarios() {
+      try {
+        const res = await fetch(`${API_BASE}/api/usuarios`);
+        if (res.ok) {
+          usuariosList = await res.json();
+          renderUsuarios();
+        }
+      } catch (err) {
+        console.error("Error cargando usuarios:", err);
+      }
+    }
+
     function renderUsuarios() {
       const tbody = document.getElementById('usuarios-table-body');
       if (!tbody) return;
@@ -4171,6 +4816,8 @@
         gastos: document.getElementById('perm-gastos').checked
       };
 
+      const passwordVal = document.getElementById('usr-in-pass') ? document.getElementById('usr-in-pass').value.trim() : '';
+
       const res = await fetch(`${API_BASE}/api/usuarios`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4179,23 +4826,62 @@
           nombre_completo: nombre,
           rol: rol,
           pin_seguridad: pin,
+          password: passwordVal,
           permisos_json: JSON.stringify(permisos)
         })
       });
 
       if (res.ok) {
+        const dataUser = await res.json();
         closeModalNuevoUsuario();
         await loadUsuarios();
+
+        // Mostrar credenciales creadas automáticamente
+        if (dataUser.credenciales_creadas) {
+          lastCreatedUserCreds = {
+            nombre: dataUser.nombre_completo,
+            usuario: dataUser.username,
+            password: dataUser.credenciales_creadas.password,
+            pin: dataUser.credenciales_creadas.pin,
+            rol: dataUser.rol
+          };
+          document.getElementById('cred-nombre').textContent = dataUser.nombre_completo;
+          document.getElementById('cred-user').textContent = dataUser.username;
+          document.getElementById('cred-pass').textContent = dataUser.credenciales_creadas.password;
+          document.getElementById('cred-pin').textContent = dataUser.credenciales_creadas.pin;
+          document.getElementById('cred-rol').textContent = dataUser.rol;
+          const mc = document.getElementById('modal-credenciales-creadas');
+          if (mc) {
+            mc.classList.remove('hidden');
+            mc.classList.add('flex');
+          }
+        } else {
+          alert("✅ ¡Colaborador registrado exitosamente!");
+        }
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.detail || "Error al registrar usuario.");
       }
     }
 
-    async function eliminarUsuarioReal(id) {
-      if (!confirm("¿Eliminar este colaborador?")) return;
-      await fetch(`${API_BASE}/api/usuarios/${id}`, { method: "DELETE" });
-      await loadUsuarios();
+    async function eliminarUsuarioReal(id, username) {
+      if (id === 1 || username === 'lider_isaac' || username === 'isaac') {
+        alert("🔒 ACCESO DENEGADO: Tu cuenta de Dueño & Líder es intocable y jamás puede ser eliminada.");
+        return;
+      }
+      if (!confirm(`¿Eliminar al colaborador @${username}?`)) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/usuarios/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          alert(`✅ Colaborador @${username} eliminado correctamente.`);
+          await loadUsuarios();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert(err.detail || "Error al eliminar usuario.");
+        }
+      } catch(e) {
+        alert("Error de conexión al eliminar usuario.");
+      }
     }
 
     // AUDIO SIMULATOR & VOICE NOTES
@@ -5085,5 +5771,86 @@
       renderWmsTable();
     }
   </script>
+
+  <!-- ======================================================== -->
+  <!-- 🧩 MODAL: PERSONALIZAR ORDEN Y PRIORIDAD DE MÓDULOS      -->
+  <!-- ======================================================== -->
+  <div id="modal-organizar-modulos" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <span>🧩</span> Prioridad & Modularidad del Sistema
+          </h3>
+          <p class="text-xs text-slate-400">Organiza qué módulos ves primero según la prioridad de tu jornada.</p>
+        </div>
+        <button onclick="cerrarModalModular()" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <div id="lista-modulos-reordenar" class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+        <!-- Render dinámico de módulos con flechas arriba/abajo y toggle -->
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button onclick="restablecerModulosDefecto()" class="text-xs text-slate-400 hover:text-white transition">
+          ↺ Restaurar por defecto
+        </button>
+        <button onclick="guardarPreferenciaModulos()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-extrabold text-xs shadow-lg transition">
+          💾 Guardar Organización
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 📲 MODAL: CREDENCIALES GENERADAS PARA COMPAÑERO          -->
+  <!-- ======================================================== -->
+  <div id="modal-credenciales-creadas" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl font-bold">
+        ✅
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-white">¡Usuario Creado Exitosamente!</h3>
+        <p class="text-xs text-slate-400">Credenciales listas para entregar a tu compañero de equipo:</p>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2 font-mono text-xs">
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Nombre:</span>
+          <span id="cred-nombre" class="font-bold text-white"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Usuario:</span>
+          <span id="cred-user" class="font-bold text-cyan-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">Contraseña:</span>
+          <span id="cred-pass" class="font-bold text-yellow-300"></span>
+        </div>
+        <div class="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <span class="text-slate-400">PIN Caja/POS:</span>
+          <span id="cred-pin" class="font-bold text-emerald-300"></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Rol Asignado:</span>
+          <span id="cred-rol" class="font-bold text-purple-300"></span>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="copiarCredencialesAlPortapapeles()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
+          <span>📋 Copiar Datos de Acceso</span>
+        </button>
+        <button onclick="enviarCredencialesWhatsApp()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
+          <span>📲 Enviar por WhatsApp</span>
+        </button>
+        <button onclick="cerrarModalCredenciales()" class="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
