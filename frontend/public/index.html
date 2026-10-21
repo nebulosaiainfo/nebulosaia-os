@@ -93,7 +93,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Usuario o Cédula</label>
           <div class="relative">
-            <input type="text" id="login-username" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Ingresa tu usuario"
+            <input type="text" id="login-username" autocomplete="username" placeholder="Usuario (ej: isanchez o tu PIN)"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">👤</span>
           </div>
@@ -102,16 +102,16 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Contraseña o PIN Maestro</label>
           <div class="relative">
-            <input type="password" id="login-password" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Contraseña o PIN"
+            <input type="password" id="login-password" autocomplete="current-password" placeholder="Contraseña o PIN Maestro"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">🔑</span>
           </div>
         </div>
 
-        <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center">
+        <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center transition-all duration-300">
         </div>
 
-        <button type="button" onclick="ejecutarLogin(event)" id="btn-submit-login"
+        <button type="submit" id="btn-submit-login"
           class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-sm shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2">
           <span>🚀 Ingresar al Sistema</span>
         </button>
@@ -3234,19 +3234,25 @@
       let uInput = uEl ? uEl.value.trim() : '';
       let pInput = pEl ? pEl.value.trim() : '';
 
-      // Fallback inteligente para acceso rápido por PIN
+      // Fallback infalible para acceso rápido del dueño o por PIN directo
       if (!uInput && pInput) {
-        if (pInput === '7777' || pInput === 'admin') uInput = 'isanchez';
-        else uInput = pInput;
+        if (pInput === '0409' || pInput === '7777' || pInput === 'admin') {
+          uInput = 'isanchez';
+        } else {
+          uInput = pInput;
+        }
       } else if (uInput && !pInput) {
-        if (uInput === '7777' || uInput === 'admin') {
+        if (uInput === '0409' || uInput === '7777') {
           pInput = uInput;
           uInput = 'isanchez';
+        } else if (uInput.toLowerCase() === 'isanchez' || uInput.toLowerCase() === 'isaac') {
+          pInput = '0409';
         }
       }
 
       if (!uInput && !pInput) {
         if (errBox) {
+          errBox.className = "p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-medium text-center";
           errBox.textContent = "Por favor ingresa tu usuario y contraseña o PIN.";
           errBox.classList.remove('hidden');
         }
@@ -3259,12 +3265,42 @@
       }
       if (errBox) errBox.classList.add('hidden');
 
+      // Detector de inicio en frío de Render (avisa tras 2.5s si el contenedor está despertando)
+      let wakeupTimer = setTimeout(() => {
+        if (submitBtn && submitBtn.disabled) {
+          submitBtn.innerHTML = "<span>⏳ Conectando con servidor en la nube...</span>";
+          if (errBox) {
+            errBox.className = "p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-medium text-center animate-pulse";
+            errBox.textContent = "⏳ Despertando servidor NEBULOSA OS en Render... Por favor espera unos segundos.";
+            errBox.classList.remove('hidden');
+          }
+        }
+      }, 2500);
+
       try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: uInput, password_or_pin: pInput })
-        });
+        let res = null;
+        let attempts = 0;
+        // Bucle de reintento automático si Render está en cold start (502/503/504)
+        while (attempts < 3) {
+          try {
+            res = await fetch(`${API_BASE}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: uInput, password_or_pin: pInput })
+            });
+            if (res.ok || res.status === 401 || res.status === 403) break;
+          } catch(netErr) {
+            console.warn(`Intento ${attempts + 1} de conexión fallido, reintentando...`, netErr);
+          }
+          attempts++;
+          if (attempts < 3) await new Promise(r => setTimeout(r, 2500));
+        }
+
+        clearTimeout(wakeupTimer);
+
+        if (!res) {
+          throw new Error("No se pudo conectar con el servidor NEBULOSA en la nube tras varios intentos.");
+        }
 
         const data = await res.json();
         if (res.ok && data.status === 'success') {
@@ -3272,7 +3308,7 @@
           localStorage.setItem('nebulosa_session', JSON.stringify(currentLoggedUser));
           localStorage.setItem('nebulosa_token', data.token);
 
-          // Ocultar pantalla de login de forma 100% garantizada
+          // Ocultar pantalla de login
           const authScreen = document.getElementById('auth-login-screen');
           if (authScreen) {
             authScreen.style.setProperty('display', 'none', 'important');
@@ -3284,27 +3320,39 @@
           try { actualizarPerfilHeader(); } catch(err) { console.error(err); }
           try { renderModularNav(); } catch(err) { console.error(err); }
 
+          if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
+            mostrarToast("👑 ¡Bienvenido, Isaac Sánchez! Modo Líder Maestro Activo.", "success");
+          } else {
+            mostrarToast(`👋 Bienvenido, ${currentLoggedUser.nombre_completo || currentLoggedUser.username}.`, "info");
+          }
+
           // Abrir primer módulo permitido
           const primerModulo = userModulesConfig.find(m => m.enabled && m.roles.includes(currentLoggedUser.rol));
           if (primerModulo && typeof switchTab === 'function') switchTab(primerModulo.id);
           else if (typeof switchTab === 'function') switchTab('pos');
         } else {
           if (errBox) {
+            errBox.className = "p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center";
             errBox.textContent = data.detail || "Usuario o PIN incorrectos.";
             errBox.classList.remove('hidden');
           }
         }
       } catch (err) {
+        clearTimeout(wakeupTimer);
         console.error("Error en login:", err);
         if (errBox) {
-          errBox.textContent = "Error al conectar con el servidor NEBULOSA.";
+          errBox.className = "p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center";
+          errBox.textContent = "Error al conectar con el servidor. Verifica tu conexión a internet o intenta nuevamente.";
           errBox.classList.remove('hidden');
         }
       } finally {
+        clearTimeout(wakeupTimer);
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = "<span>🚀 Ingresar al Sistema</span>";
+          submitBtn.innerHTML = "<span>🔑 Ingresar al Sistema</span>";
         }
+      }
+    };
       }
     };
 
