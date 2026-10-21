@@ -25,6 +25,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session
 # Directorios de trabajo
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "backend" / "data"
+import sys
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+if str(BASE_DIR / "backend") not in sys.path:
+    sys.path.insert(0, str(BASE_DIR / "backend"))
 UPLOADS_DIR = BASE_DIR / "backend" / "uploads"
 PROD_UPLOADS_DIR = UPLOADS_DIR / "productos"
 PDF_DIR = BASE_DIR / "01_Core_Facturacion" / "facturas_pdf"
@@ -414,9 +419,14 @@ def get_db():
     finally:
         db.close()
 
-from app.services.factura_pdf_service import generar_pdf_factura, enviar_factura_correo
-from app.services.gemini_analytics_service import analizar_tendencias_wms_con_gemini
-from app.services.reporte_excel_service import generar_reporte_excel_completo
+try:
+    from backend.app.services.factura_pdf_service import generar_pdf_factura, enviar_factura_correo
+    from backend.app.services.gemini_analytics_service import analizar_tendencias_wms_con_gemini
+    from backend.app.services.reporte_excel_service import generar_reporte_excel_completo
+except ImportError:
+    from app.services.factura_pdf_service import generar_pdf_factura, enviar_factura_correo
+    from app.services.gemini_analytics_service import analizar_tendencias_wms_con_gemini
+    from app.services.reporte_excel_service import generar_reporte_excel_completo
 
 # ==========================================
 # 1. WMS: INVENTARIO, FOTOS Y EDICIÓN COMPLETA
