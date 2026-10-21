@@ -4,8 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEBULOSA | INGENIERÍA & AUTOMATIZACIÓN</title>
-  <script src="https://cdn.tailwindcss.com">
-    // ========================================================
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #00F0FF;
+      --secondary: #7000FF;
+      --bg-dark: #07090E;
+      --panel-bg: rgba(15, 23, 42, 0.75);
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-dark);
+      color: #F8FAFC;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .tab-active {
+      background: rgba(0, 240, 255, 0.12) !important;
+      border-color: #00F0FF !important;
+      color: #00F0FF !important;
+    }
+    /* Estilos de scrollbar personalizados */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #07090e; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+  <!-- Generadores de Códigos de Barra y QR -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <script>
+
+  // ========================================================
+  // 🌐 CONFIGURACIÓN GLOBAL DE API
+  // ========================================================
+  var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
+
+// ========================================================
     // 🔐 SISTEMA DE AUTENTICACIÓN & SESIONES PRO
     // ========================================================
     let currentLoggedUser = null;
@@ -31,13 +77,24 @@
 
     async function ejecutarLogin(e) {
       if (e) e.preventDefault();
-      const uInput = document.getElementById('login-username').value.trim();
-      const pInput = document.getElementById('login-password').value.trim();
+      let uInput = document.getElementById('login-username').value.trim();
+      let pInput = document.getElementById('login-password').value.trim();
       const errBox = document.getElementById('login-error-msg');
       const submitBtn = document.getElementById('btn-submit-login');
 
-      if (!uInput || !pInput) {
-        errBox.textContent = "Por favor ingresa usuario y contraseña o PIN.";
+      // Si el usuario puso solo el PIN en el campo de usuario o contraseña
+      if (!uInput && pInput) {
+        if (pInput === '7777' || pInput === 'admin') uInput = 'lider_isaac';
+        else uInput = pInput;
+      } else if (uInput && !pInput) {
+        if (uInput === '7777' || uInput === 'admin') {
+          pInput = uInput;
+          uInput = 'lider_isaac';
+        }
+      }
+
+      if (!uInput && !pInput) {
+        errBox.textContent = "Por favor ingresa tu usuario y contraseña o PIN (7777).";
         errBox.classList.remove('hidden');
         return;
       }
@@ -421,46 +478,8 @@
         alert("Error de conexión al purgar el sistema.");
       }
     }
+  </script>
 
-</script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  
-  <style>
-    :root {
-      --primary: #00F0FF;
-      --secondary: #7000FF;
-      --bg-dark: #07090E;
-      --panel-bg: rgba(15, 23, 42, 0.75);
-    }
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: var(--bg-dark);
-      color: #F8FAFC;
-    }
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .glass-panel {
-      background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .tab-active {
-      background: rgba(0, 240, 255, 0.12) !important;
-      border-color: #00F0FF !important;
-      color: #00F0FF !important;
-    }
-    /* Estilos de scrollbar personalizados */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #07090e; }
-    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #334155; }
-  </style>
-  <!-- Generadores de Códigos de Barra y QR -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black">
 
@@ -2523,7 +2542,7 @@
   <!-- SCRIPT LOGIC JAVASCRIPT CONECTADO A FASTAPI -->
   <!-- ======================================================== -->
   <script>
-    const API_BASE = (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
+    var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
     let currentRole = "LIDER";
     let wmsInventory = [];
     let crmClients = [];
