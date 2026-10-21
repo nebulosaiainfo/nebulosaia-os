@@ -334,7 +334,8 @@ def seed_initial_data():
             db.add(isaac_user)
             db.commit()
         else:
-            isaac_user.pin_seguridad = "0409"
+            if not isaac_user.pin_seguridad:
+                isaac_user.pin_seguridad = "0409"
             isaac_user.is_master = 1
             isaac_user.activo = 1
             isaac_user.rol = "DUENO"
@@ -806,7 +807,7 @@ def eliminar_gasto(gasto_id: int, db: Session = Depends(get_db)):
 class UsuarioSistemaCreate(BaseModel):
     username: str
     nombre_completo: str
-    rol: str # DUENO, ADMINISTRADOR, JEFE_BODEGA, VENDEDOR
+    rol: Optional[str] = "VENDEDOR" # DUENO, ADMINISTRADOR, JEFE_BODEGA, ASESOR_CRM, VENDEDOR
     pin_seguridad: Optional[str] = None
     password: Optional[str] = None
     permisos_json: Optional[str] = "{}"
@@ -847,7 +848,8 @@ def login_usuario(req: LoginRequest, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(usuario_master)
         else:
-            usuario_master.pin_seguridad = "0409"
+            if not usuario_master.pin_seguridad:
+                usuario_master.pin_seguridad = "0409"
             usuario_master.is_master = 1
             usuario_master.activo = 1
             usuario_master.rol = "DUENO"
@@ -861,9 +863,10 @@ def login_usuario(req: LoginRequest, db: Session = Depends(get_db)):
                 "username": usuario_master.username,
                 "nombre_completo": usuario_master.nombre_completo,
                 "rol": "DUENO",
-                "pin_seguridad": "0409",
+                "pin_seguridad": usuario_master.pin_seguridad,
                 "is_master": 1,
-                "activo": 1
+                "activo": 1,
+                "permisos_json": usuario_master.permisos_json or "{}"
             }
         }
 
@@ -956,29 +959,51 @@ def actualizar_usuario(u_id: int, u: UsuarioSistemaCreate, db: Session = Depends
     if not item:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
+    # Actualización segura de username evitando colisiones
+    new_username = (u.username or "").strip()
+    if new_username and new_username.lower() != item.username.lower():
+        duplicado = db.query(DBUsuarioSistema).filter(
+            DBUsuarioSistema.username.ilike(new_username),
+            DBUsuarioSistema.id != u_id
+        ).first()
+        if duplicado:
+            raise HTTPException(status_code=400, detail=f"El nombre de usuario '@{new_username}' ya está registrado.")
+        item.username = new_username
+
+    item.nombre_completo = u.nombre_completo.strip()
+    if u.pin_seguridad is not None and str(u.pin_seguridad).strip() != "":
+        item.pin_seguridad = str(u.pin_seguridad).strip()
+    if u.password is not None and str(u.password).strip() != "":
+        item.password = str(u.password).strip()
+
     # Blindaje del usuario maestro
     if getattr(item, "is_master", 0) == 1 or item.id == 1 or item.username in ["isanchez", "lider_isaac", "isaac"]:
-        item.nombre_completo = u.nombre_completo
-        if u.pin_seguridad:
-            item.pin_seguridad = u.pin_seguridad
-        if u.password:
-            item.password = u.password
         item.rol = "DUENO"
         item.is_master = 1
         item.activo = 1
+        if u.permisos_json:
+            item.permisos_json = u.permisos_json
     else:
-        item.nombre_completo = u.nombre_completo
-        item.rol = u.rol
-        if u.pin_seguridad:
-            item.pin_seguridad = u.pin_seguridad
-        if u.password:
-            item.password = u.password
-        item.permisos_json = u.permisos_json
-        item.activo = u.activo
+        if u.rol:
+            item.rol = u.rol
+        item.permisos_json = u.permisos_json or "{}"
+        if u.activo is not None:
+            item.activo = u.activo
         
     db.commit()
     db.refresh(item)
-    return item
+    return {
+        "status": "success",
+        "id": item.id,
+        "username": item.username,
+        "nombre_completo": item.nombre_completo,
+        "rol": item.rol,
+        "pin_seguridad": item.pin_seguridad,
+        "password": item.password,
+        "permisos_json": item.permisos_json,
+        "activo": item.activo,
+        "is_master": getattr(item, "is_master", 0)
+    }
 
 @app.delete("/api/usuarios/{u_id}")
 def eliminar_usuario(u_id: int, db: Session = Depends(get_db)):
@@ -2128,16 +2153,16 @@ def obtener_datos_fiscales(db: Session = Depends(get_db)):
     }
 
 class FiscalConfigRequest(BaseModel):
-    nombre_tienda: str
-    cedula_fiscal: str
-    telefono: str
-    correo: str
-    direccion: str
-    codigo_actividad: str
-    regimen_tributario: str
-    sucursal: str = "001"
-    caja: str = "00001"
-    hacienda_ambiente: str = "Staging / Pruebas DGT"
+    nombre_tienda: Optional[str] = None
+    cedula_fiscal: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    codigo_actividad: Optional[str] = None
+    regimen_tributario: Optional[str] = None
+    sucursal: Optional[str] = "001"
+    caja: Optional[str] = "00001"
+    hacienda_ambiente: Optional[str] = "Staging / Pruebas DGT"
 
 @app.put("/api/configuracion/fiscal")
 def actualizar_datos_fiscales(req: FiscalConfigRequest, db: Session = Depends(get_db)):
@@ -2145,9 +2170,11 @@ def actualizar_datos_fiscales(req: FiscalConfigRequest, db: Session = Depends(ge
     if not cfg:
         cfg = DBConfiguracion()
         db.add(cfg)
-    for k, v in req.dict().items():
-        setattr(cfg, k, v)
+    for k, v in req.dict(exclude_unset=True).items():
+        if v is not None:
+            setattr(cfg, k, v)
     db.commit()
+    db.refresh(cfg)
     return {"status": "success", "mensaje": "Datos fiscales actualizados con éxito"}
 
 # ==========================================
@@ -2352,17 +2379,51 @@ def analizar_inventario_ai(db: Session = Depends(get_db)):
 
 @app.get("/api/configuracion")
 def obtener_config(db: Session = Depends(get_db)):
-    return db.query(DBConfiguracion).first()
+    cfg = db.query(DBConfiguracion).first()
+    if not cfg:
+        cfg = DBConfiguracion()
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return {
+        "id": cfg.id,
+        "nombre_tienda": cfg.nombre_tienda or "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
+        "cedula_fiscal": cfg.cedula_fiscal or "3-101-948271",
+        "telefono": cfg.telefono or "+506 8888-8888",
+        "correo": cfg.correo or "ventas@nexoretail.cr",
+        "direccion": cfg.direccion or "San José, Costa Rica",
+        "codigo_actividad": cfg.codigo_actividad or "477101 - Venta al por menor de prendas de vestir",
+        "regimen_tributario": cfg.regimen_tributario or "Régimen Simplificado (Costa Rica)",
+        "sucursal": cfg.sucursal or "001",
+        "caja": cfg.caja or "00001",
+        "hacienda_ambiente": cfg.hacienda_ambiente or "Staging / Pruebas DGT",
+        "color_primario": cfg.color_primario or "#00F0FF",
+        "color_secundario": cfg.color_secundario or "#7000FF",
+        "color_fondo": cfg.color_fondo or "#080c14",
+        "tema_fondo": cfg.tema_fondo or "Midnight Cyberpunk",
+        "moneda": cfg.moneda or "CRC",
+        "giro_comercial": cfg.giro_comercial or "Comercio General / Retail",
+        "licencia_activa": getattr(cfg, "licencia_activa", True),
+        "sistema_purgado": getattr(cfg, "sistema_purgado", False)
+    }
 
 class ConfigUpdate(BaseModel):
-    nombre_tienda: str
-    cedula_fiscal: str
-    color_primario: str
-    color_secundario: str
-    color_fondo: Optional[str] = "#080c14"
-    tema_fondo: Optional[str] = "Midnight Nebula"
-    moneda: str
-    giro_comercial: Optional[str] = "Comercio General / Retail"
+    nombre_tienda: Optional[str] = None
+    cedula_fiscal: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    codigo_actividad: Optional[str] = None
+    regimen_tributario: Optional[str] = None
+    sucursal: Optional[str] = "001"
+    caja: Optional[str] = "00001"
+    hacienda_ambiente: Optional[str] = "Staging / Pruebas DGT"
+    color_primario: Optional[str] = None
+    color_secundario: Optional[str] = None
+    color_fondo: Optional[str] = None
+    tema_fondo: Optional[str] = None
+    moneda: Optional[str] = None
+    giro_comercial: Optional[str] = None
 
 @app.put("/api/configuracion")
 def actualizar_config(cfg: ConfigUpdate, db: Session = Depends(get_db)):
@@ -2370,10 +2431,33 @@ def actualizar_config(cfg: ConfigUpdate, db: Session = Depends(get_db)):
     if not item:
         item = DBConfiguracion()
         db.add(item)
-    for k, v in cfg.dict().items():
-        setattr(item, k, v)
+    for k, v in cfg.dict(exclude_unset=True).items():
+        if v is not None:
+            setattr(item, k, v)
     db.commit()
-    return item
+    db.refresh(item)
+    return {
+        "status": "success",
+        "message": "Configuración actualizada correctamente",
+        "data": {
+            "nombre_tienda": item.nombre_tienda,
+            "cedula_fiscal": item.cedula_fiscal,
+            "telefono": item.telefono,
+            "correo": item.correo,
+            "direccion": item.direccion,
+            "codigo_actividad": item.codigo_actividad,
+            "regimen_tributario": item.regimen_tributario,
+            "sucursal": item.sucursal,
+            "caja": item.caja,
+            "hacienda_ambiente": item.hacienda_ambiente,
+            "color_primario": item.color_primario,
+            "color_secundario": item.color_secundario,
+            "color_fondo": item.color_fondo,
+            "tema_fondo": item.tema_fondo,
+            "moneda": item.moneda,
+            "giro_comercial": item.giro_comercial
+        }
+    }
 
 
 

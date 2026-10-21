@@ -1265,6 +1265,36 @@
           </div>
         </div>
 
+        <!-- DATOS DE CONTACTO Y FACTURACIÓN INTEGRADOS -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Teléfono Comercial / WhatsApp:</label>
+            <input type="text" id="cfg-store-tel" placeholder="+506 8888-8888" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-cyan-400 font-mono" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Correo Electrónico de Contacto:</label>
+            <input type="email" id="cfg-store-email" placeholder="contacto@tienda.cr" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-cyan-400 font-mono" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Régimen Tributario:</label>
+            <select id="cfg-store-regimen" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-cyan-400">
+              <option value="Régimen Simplificado (Costa Rica)">Régimen Simplificado (Costa Rica)</option>
+              <option value="Régimen Tradicional (Facturación Electrónica)">Régimen Tradicional (Facturación Electrónica)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div class="sm:col-span-2">
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Dirección Física / Ubicación de la Tienda:</label>
+            <input type="text" id="cfg-store-dir" placeholder="San José, Costa Rica" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-cyan-400" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Código Actividad Económica (CABYS / DGT):</label>
+            <input type="text" id="cfg-store-actividad" placeholder="477101 - Venta al por menor" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-cyan-400 font-mono" />
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
             <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Color de Marca Primario:</label>
@@ -2730,9 +2760,11 @@
           <div>
             <label class="text-[10px] font-bold text-purple-400 uppercase block mb-1">Rol Asignado:</label>
             <select id="edit-usr-rol" class="w-full bg-slate-950 border border-purple-500/50 px-3 py-2 rounded-xl text-white outline-none font-bold">
-              <option value="VENDEDOR">🛍️ Vendedor / Cajero</option>
-              <option value="JEFE_BODEGA">📦 Jefe de Bodega</option>
-              <option value="ADMINISTRADOR">🏬 Administrador</option>
+              <option value="DUENO">👑 Dueño / Acceso Total</option>
+              <option value="ADMINISTRADOR">🏬 Administrador de Sucursal</option>
+              <option value="JEFE_BODEGA">📦 Jefe de Bodega (WMS & Ajustes)</option>
+              <option value="ASESOR_CRM">💬 Asesor Comercial (CRM & Leads)</option>
+              <option value="VENDEDOR">🛍️ Vendedor / Cajero (Solo POS)</option>
             </select>
           </div>
           <div class="space-y-1">
@@ -2752,27 +2784,42 @@
           <input type="text" id="edit-usr-pass" placeholder="Escribe nueva clave o genera una automática" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
         </div>
 
-        <!-- PERMISOS MODULARES -->
+        <!-- PERMISOS MODULARES GRANULARES -->
         <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-2xl space-y-2">
-          <span class="text-[10px] font-bold text-slate-400 uppercase block">Permisos Específicos:</span>
+          <span class="text-[10px] font-bold text-slate-400 uppercase block">Permisos Granulares Habilitados:</span>
           <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-pos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Punto de Venta (POS)
+              <input type="checkbox" id="edit-perm-pos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🛒 Punto de Venta (POS)
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-wms" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Inventario WMS
+              <input type="checkbox" id="edit-perm-wms" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 📦 Inventario WMS
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-apartados" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Apartados & Cuotas
+              <input type="checkbox" id="edit-perm-apartados" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🤝 Apartados & Cuotas
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-costos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Ver Costos Reales
+              <input type="checkbox" id="edit-perm-crm" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 💬 CRM Leads & Chat
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-gastos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Gestionar Gastos
+              <input type="checkbox" id="edit-perm-costos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🏷️ Ver Costos Reales
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="edit-perm-eliminar" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Eliminar Productos
+              <input type="checkbox" id="edit-perm-gastos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 💸 Gestionar Gastos
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-eliminar" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🗑️ Eliminar Productos
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-ajustes" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> ⚖️ Ajustes de Stock
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-proveedores" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🚚 Proveedores & Compras
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-fiscal" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 🏛️ Facturación Fiscal
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-reportes" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> 📊 Reportes Generales
             </label>
           </div>
         </div>
@@ -3034,18 +3081,29 @@
       document.getElementById('edit-usr-id').value = u.id;
       document.getElementById('edit-usr-nombre').value = u.nombre_completo || '';
       document.getElementById('edit-usr-user').value = u.username || '';
-      document.getElementById('edit-usr-rol').value = u.rol || 'VENDEDOR';
+      
+      const rolSel = document.getElementById('edit-usr-rol');
+      if (rolSel) rolSel.value = u.rol || 'VENDEDOR';
+
       document.getElementById('edit-usr-pin').value = u.pin_seguridad || '';
       document.getElementById('edit-usr-pass').value = u.password || '';
       document.getElementById('edit-usr-activo').value = (u.activo === 0) ? '0' : '1';
 
-      const perms = JSON.parse(u.permisos_json || '{}');
-      document.getElementById('edit-perm-pos').checked = !!perms.pos;
-      document.getElementById('edit-perm-wms').checked = !!perms.wms;
-      document.getElementById('edit-perm-apartados').checked = !!perms.apartados;
-      document.getElementById('edit-perm-costos').checked = !!perms.costos;
-      document.getElementById('edit-perm-gastos').checked = !!perms.gastos;
-      document.getElementById('edit-perm-eliminar').checked = !!perms.eliminar_productos;
+      let perms = {};
+      try { perms = JSON.parse(u.permisos_json || '{}'); } catch(e){ perms = {}; }
+      
+      const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+      setCheck('edit-perm-pos', perms.pos);
+      setCheck('edit-perm-wms', perms.wms);
+      setCheck('edit-perm-apartados', perms.apartados);
+      setCheck('edit-perm-crm', perms.crm);
+      setCheck('edit-perm-costos', perms.costos);
+      setCheck('edit-perm-gastos', perms.gastos);
+      setCheck('edit-perm-eliminar', perms.eliminar_productos);
+      setCheck('edit-perm-ajustes', perms.ajustes_stock);
+      setCheck('edit-perm-proveedores', perms.proveedores);
+      setCheck('edit-perm-fiscal', perms.fiscal);
+      setCheck('edit-perm-reportes', perms.reportes);
 
       abrirModalGenerico('modal-editar-usuario');
     };
@@ -3066,23 +3124,29 @@
       const uId = document.getElementById('edit-usr-id').value;
       const nombre = document.getElementById('edit-usr-nombre').value.trim();
       const username = document.getElementById('edit-usr-user').value.trim();
-      const rol = document.getElementById('edit-usr-rol').value;
+      const rol = document.getElementById('edit-usr-rol') ? document.getElementById('edit-usr-rol').value : 'VENDEDOR';
       const pin = document.getElementById('edit-usr-pin').value.trim();
       const pass = document.getElementById('edit-usr-pass').value.trim();
       const activo = parseInt(document.getElementById('edit-usr-activo').value);
 
       if (!nombre || !username) {
-        alert("Por favor ingresa nombre y usuario.");
+        mostrarToast("Por favor ingresa nombre y usuario.", "warning");
         return;
       }
 
+      const getCheck = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
       const permisos = {
-        pos: document.getElementById('edit-perm-pos').checked,
-        wms: document.getElementById('edit-perm-wms').checked,
-        apartados: document.getElementById('edit-perm-apartados').checked,
-        costos: document.getElementById('edit-perm-costos').checked,
-        gastos: document.getElementById('edit-perm-gastos').checked,
-        eliminar_productos: document.getElementById('edit-perm-eliminar').checked
+        pos: getCheck('edit-perm-pos'),
+        wms: getCheck('edit-perm-wms'),
+        apartados: getCheck('edit-perm-apartados'),
+        crm: getCheck('edit-perm-crm'),
+        costos: getCheck('edit-perm-costos'),
+        gastos: getCheck('edit-perm-gastos'),
+        eliminar_productos: getCheck('edit-perm-eliminar'),
+        ajustes_stock: getCheck('edit-perm-ajustes'),
+        proveedores: getCheck('edit-perm-proveedores'),
+        fiscal: getCheck('edit-perm-fiscal'),
+        reportes: getCheck('edit-perm-reportes')
       };
 
       try {
@@ -3101,16 +3165,27 @@
         });
 
         if (res.ok) {
-          alert("✅ ¡Usuario y credenciales actualizados correctamente!");
+          const updatedUser = await res.json();
+          // Si el usuario editado es el que tiene la sesión activa, actualizar sesión en localStorage
+          if (currentLoggedUser && (currentLoggedUser.id == uId || currentLoggedUser.username === username || currentLoggedUser.username === updatedUser.username)) {
+            currentLoggedUser.nombre_completo = updatedUser.nombre_completo || nombre;
+            currentLoggedUser.username = updatedUser.username || username;
+            currentLoggedUser.rol = updatedUser.rol || rol;
+            if (updatedUser.pin_seguridad) currentLoggedUser.pin_seguridad = updatedUser.pin_seguridad;
+            try { localStorage.setItem('nebulosa_session', JSON.stringify(currentLoggedUser)); } catch(e){}
+            actualizarPerfilHeader();
+          }
+          mostrarToast("✅ Colaborador y credenciales actualizados exitosamente.", "success");
           closeModalEditarUsuario();
           await loadUsuarios();
+          if (typeof renderPosVendedoresSelect === 'function') renderPosVendedoresSelect();
         } else {
           const err = await res.json().catch(() => ({}));
-          alert("Error: " + (err.detail || "No se pudo actualizar el usuario."));
+          mostrarToast("Error: " + (err.detail || "No se pudo actualizar el usuario."), "error");
         }
       } catch (err) {
         console.error("Error al editar usuario:", err);
-        alert("Error de conexión al actualizar usuario.");
+        mostrarToast("Error de conexión al actualizar usuario.", "error");
       }
     };
 
@@ -3693,22 +3768,27 @@
     });
 
     async function init() {
-      await loadConfig();
-      await loadWmsInventory();
-      await loadCrmClients();
-      await loadProformas();
-      await loadApartados();
-      await loadCrmChats();
-      await loadHistorialFacturas();
-      await loadFiscalConfig();
-      await loadReportesGenerales();
-      await loadTickets();
-      await loadProveedores();
-      await loadGastos();
-      await loadUsuarios();
-      await loadFinanzasResumen();
-      initBarcodeScannerListener();
-      checkAlarmasBanner();
+      const safeRun = async (fn, name) => {
+        try { if (typeof fn === 'function') await fn(); }
+        catch(e) { console.warn(`Error al inicializar ${name}:`, e); }
+      };
+
+      await safeRun(loadConfig, 'Configuración');
+      await safeRun(loadWmsInventory, 'WMS Inventario');
+      await safeRun(loadCrmClients, 'Clientes CRM');
+      await safeRun(loadProformas, 'Proformas');
+      await safeRun(loadApartados, 'Apartados');
+      await safeRun(loadCrmChats, 'CRM Chats');
+      await safeRun(loadHistorialFacturas, 'Facturas');
+      await safeRun(loadFiscalConfig, 'Configuración Fiscal');
+      await safeRun(loadReportesGenerales, 'Reportes Generales');
+      await safeRun(loadTickets, 'Tickets');
+      await safeRun(loadProveedores, 'Proveedores');
+      await safeRun(loadGastos, 'Gastos');
+      await safeRun(loadUsuarios, 'Usuarios & Personal');
+      await safeRun(loadFinanzasResumen, 'Finanzas');
+      try { initBarcodeScannerListener(); } catch(e){}
+      try { checkAlarmasBanner(); } catch(e){}
     }
 
     // NAVEGACIÓN MODULAR DE PESTAÑAS
@@ -3746,6 +3826,9 @@
       if (tabId === 'tickets') loadLeaderTicketsReal();
       if (tabId === 'usuarios') {
         loadUsuarios();
+      }
+      if (tabId === 'custom') {
+        loadConfig();
       }
     }
 
@@ -3808,34 +3891,59 @@
         const res = await fetch(`${API_BASE}/api/configuracion`);
         if (res.ok) {
           const cfg = await res.json();
-          document.getElementById('txt-brand-name').textContent = cfg.nombre_tienda || 'NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN';
-          document.getElementById('cfg-store-name').value = cfg.nombre_tienda || '';
-          document.getElementById('cfg-store-id').value = cfg.cedula_fiscal || '';
+          const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+          const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || ''; };
+
+          setText('txt-brand-name', cfg.nombre_tienda || 'NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN');
+          setVal('cfg-store-name', cfg.nombre_tienda);
+          setVal('fisc-name', cfg.nombre_tienda);
+
+          setVal('cfg-store-id', cfg.cedula_fiscal);
+          setVal('fisc-id', cfg.cedula_fiscal);
+
+          setVal('cfg-store-tel', cfg.telefono);
+          setVal('fisc-tel', cfg.telefono);
+
+          setVal('cfg-store-email', cfg.correo);
+          setVal('fisc-mail', cfg.correo);
+
+          setVal('cfg-store-dir', cfg.direccion);
+          setVal('fisc-dir', cfg.direccion);
+
+          if (cfg.regimen_tributario) {
+            setVal('cfg-store-regimen', cfg.regimen_tributario);
+            setVal('fisc-regimen', cfg.regimen_tributario);
+          }
+          if (cfg.codigo_actividad) {
+            setVal('cfg-store-actividad', cfg.codigo_actividad);
+            setVal('fisc-actividad', cfg.codigo_actividad);
+          }
+
           if (cfg.giro_comercial) {
-            if (document.getElementById('cfg-giro')) document.getElementById('cfg-giro').value = cfg.giro_comercial;
-            if (document.getElementById('txt-brand-rubro')) document.getElementById('txt-brand-rubro').textContent = cfg.giro_comercial + ' • WMS & POS';
+            setVal('cfg-giro', cfg.giro_comercial);
+            setText('txt-brand-rubro', cfg.giro_comercial + ' • WMS & POS');
           }
-          if (cfg.moneda && document.getElementById('cfg-currency')) {
-            document.getElementById('cfg-currency').value = cfg.moneda;
+          if (cfg.moneda) {
+            setVal('cfg-currency', cfg.moneda);
           }
-          document.getElementById('cfg-color-1').value = cfg.color_primario || '#00F0FF';
-          document.getElementById('cfg-color-2').value = cfg.color_secundario || '#7000FF';
-          document.getElementById('picker-primary').value = cfg.color_primario || '#00F0FF';
-          document.getElementById('picker-secondary').value = cfg.color_secundario || '#7000FF';
+
+          setVal('cfg-color-1', cfg.color_primario || '#00F0FF');
+          setVal('cfg-color-2', cfg.color_secundario || '#7000FF');
+          setVal('picker-primary', cfg.color_primario || '#00F0FF');
+          setVal('picker-secondary', cfg.color_secundario || '#7000FF');
           updateThemePrimary(cfg.color_primario || '#00F0FF');
           updateThemeSecondary(cfg.color_secundario || '#7000FF');
+
           if (cfg.color_fondo) {
             currentBgColor = cfg.color_fondo;
             currentThemePreset = cfg.tema_fondo || "Personalizado";
-            const bgInp = document.getElementById('cfg-bg-color');
-            if (bgInp) bgInp.value = cfg.color_fondo;
-            const bgLbl = document.getElementById('label-bg-color');
-            if (bgLbl) bgLbl.textContent = cfg.color_fondo.toUpperCase();
+            setVal('cfg-bg-color', cfg.color_fondo);
+            setText('label-bg-color', cfg.color_fondo.toUpperCase());
             applyBackgroundTheme(cfg.color_fondo);
           }
         }
       } catch (err) {
-        console.warn("Backend no respondiendo:", err);
+        console.warn("Backend no respondiendo al cargar config:", err);
       }
     }
 
@@ -3864,31 +3972,56 @@
     }
 
     async function saveTenantPreferencesReal() {
+      const getVal = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
       const payload = {
-        nombre_tienda: document.getElementById('cfg-store-name').value.trim() || "NEXO RETAIL",
-        cedula_fiscal: document.getElementById('cfg-store-id').value.trim() || "3-101-000000",
-        giro_comercial: document.getElementById('cfg-giro') ? document.getElementById('cfg-giro').value : "Comercio General / Retail",
-        color_primario: document.getElementById('cfg-color-1').value || "#00F0FF",
-        color_secundario: document.getElementById('cfg-color-2').value || "#7000FF",
+        nombre_tienda: getVal('cfg-store-name') || "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
+        cedula_fiscal: getVal('cfg-store-id') || "3-101-948271",
+        telefono: getVal('cfg-store-tel') || getVal('fisc-tel') || "+506 8888-8888",
+        correo: getVal('cfg-store-email') || getVal('fisc-mail') || "ventas@nexoretail.cr",
+        direccion: getVal('cfg-store-dir') || getVal('fisc-dir') || "San José, Costa Rica",
+        regimen_tributario: getVal('cfg-store-regimen') || getVal('fisc-regimen') || "Régimen Simplificado (Costa Rica)",
+        codigo_actividad: getVal('cfg-store-actividad') || getVal('fisc-actividad') || "477101 - Venta al por menor",
+        giro_comercial: getVal('cfg-giro') || "Comercio General / Retail",
+        color_primario: getVal('cfg-color-1') || "#00F0FF",
+        color_secundario: getVal('cfg-color-2') || "#7000FF",
         color_fondo: currentBgColor || "#080c14",
         tema_fondo: currentThemePreset || "Midnight Cyberpunk",
-        moneda: document.getElementById('cfg-currency').value || "CRC"
+        moneda: getVal('cfg-currency') || "CRC"
       };
-      const res = await fetch(`${API_BASE}/api/configuracion`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        document.getElementById('txt-brand-name').textContent = payload.nombre_tienda;
-        if (document.getElementById('txt-brand-rubro')) {
-          document.getElementById('txt-brand-rubro').textContent = payload.giro_comercial + ' • WMS & POS';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/configuracion`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('txt-brand-name').textContent = payload.nombre_tienda;
+          if (document.getElementById('txt-brand-rubro')) {
+            document.getElementById('txt-brand-rubro').textContent = payload.giro_comercial + ' • WMS & POS';
+          }
+          // Sincronizar campos en módulo fiscal
+          const syncVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+          syncVal('fisc-name', payload.nombre_tienda);
+          syncVal('fisc-id', payload.cedula_fiscal);
+          syncVal('fisc-tel', payload.telefono);
+          syncVal('fisc-mail', payload.correo);
+          syncVal('fisc-dir', payload.direccion);
+          syncVal('fisc-regimen', payload.regimen_tributario);
+          syncVal('fisc-actividad', payload.codigo_actividad);
+
+          applyDynamicThemeRules(payload.color_primario, payload.color_secundario);
+          applyBackgroundTheme(payload.color_fondo);
+          mostrarToast("✅ Configuración de la empresa guardada correctamente en la base de datos.", "success");
+        } else {
+          const err = await res.json().catch(() => ({}));
+          mostrarToast("Error al guardar: " + (err.detail || "Verifica los datos."), "error");
         }
-        applyDynamicThemeRules(payload.color_primario, payload.color_secundario);
-        applyBackgroundTheme(payload.color_fondo);
-        alert("✨ Personalización visual de marca y atmósfera de fondo guardadas en base de datos.");
-      } else {
-        alert("Error al guardar personalización en el servidor.");
+      } catch(err) {
+        console.error("Error al guardar config:", err);
+        mostrarToast("Error de conexión al guardar configuración.", "error");
       }
     }
 
@@ -5949,86 +6082,100 @@
       const pin = document.getElementById('usr-in-pin').value.trim() || '1234';
 
       if (!username || !nombre) {
-        alert("Ingresa el nombre completo y el usuario.");
+        mostrarToast("Ingresa el nombre completo y el usuario.", "warning");
         return;
       }
 
+      const getCheck = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
       const permisos = {
-        pos: document.getElementById('perm-pos').checked,
-        wms: document.getElementById('perm-wms').checked,
-        crm: document.getElementById('perm-crm').checked,
-        apartados: document.getElementById('perm-apartados').checked,
-        costos: document.getElementById('perm-costos').checked,
-        eliminar_productos: document.getElementById('perm-eliminar').checked,
-        ajustes_stock: document.getElementById('perm-ajustes').checked,
-        gastos: document.getElementById('perm-gastos').checked
+        pos: getCheck('perm-pos'),
+        wms: getCheck('perm-wms'),
+        crm: getCheck('perm-crm'),
+        apartados: getCheck('perm-apartados'),
+        costos: getCheck('perm-costos'),
+        eliminar_productos: getCheck('perm-eliminar'),
+        ajustes_stock: getCheck('perm-ajustes'),
+        gastos: getCheck('perm-gastos')
       };
 
       const passwordVal = document.getElementById('usr-in-pass') ? document.getElementById('usr-in-pass').value.trim() : '';
 
-      const res = await fetch(`${API_BASE}/api/usuarios`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username,
-          nombre_completo: nombre,
-          rol: rol,
-          pin_seguridad: pin,
-          password: passwordVal,
-          permisos_json: JSON.stringify(permisos)
-        })
-      });
+      try {
+        const res = await fetch(`${API_BASE}/api/usuarios`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: username,
+            nombre_completo: nombre,
+            rol: rol,
+            pin_seguridad: pin,
+            password: passwordVal,
+            permisos_json: JSON.stringify(permisos)
+          })
+        });
 
-      if (res.ok) {
-        const dataUser = await res.json();
-        closeModalNuevoUsuario();
-        await loadUsuarios();
+        if (res.ok) {
+          const dataUser = await res.json();
+          mostrarToast(`✅ Colaborador @${username} registrado con éxito.`, "success");
+          closeModalNuevoUsuario();
+          await loadUsuarios();
+          if (typeof renderPosVendedoresSelect === 'function') renderPosVendedoresSelect();
 
-        // Mostrar credenciales creadas automáticamente
-        if (dataUser.credenciales_creadas) {
-          lastCreatedUserCreds = {
-            nombre: dataUser.nombre_completo,
-            usuario: dataUser.username,
-            password: dataUser.credenciales_creadas.password,
-            pin: dataUser.credenciales_creadas.pin,
-            rol: dataUser.rol
-          };
-          document.getElementById('cred-nombre').textContent = dataUser.nombre_completo;
-          document.getElementById('cred-user').textContent = dataUser.username;
-          document.getElementById('cred-pass').textContent = dataUser.credenciales_creadas.password;
-          document.getElementById('cred-pin').textContent = dataUser.credenciales_creadas.pin;
-          document.getElementById('cred-rol').textContent = dataUser.rol;
-          const mc = document.getElementById('modal-credenciales-creadas');
-          if (mc) {
-            mc.classList.remove('hidden');
-            mc.classList.add('flex');
+          // Mostrar credenciales creadas automáticamente
+          if (dataUser.credenciales_creadas) {
+            lastCreatedUserCreds = {
+              nombre: dataUser.nombre_completo,
+              usuario: dataUser.username,
+              password: dataUser.credenciales_creadas.password,
+              pin: dataUser.credenciales_creadas.pin,
+              rol: dataUser.rol
+            };
+            document.getElementById('cred-nombre').textContent = dataUser.nombre_completo;
+            document.getElementById('cred-user').textContent = dataUser.username;
+            document.getElementById('cred-pass').textContent = dataUser.credenciales_creadas.password;
+            document.getElementById('cred-pin').textContent = dataUser.credenciales_creadas.pin;
+            document.getElementById('cred-rol').textContent = dataUser.rol;
+
+            const mc = document.getElementById('modal-credenciales-creadas');
+            if (mc) {
+              mc.classList.remove('hidden');
+              mc.classList.add('flex');
+            }
           }
         } else {
-          alert("✅ ¡Colaborador registrado exitosamente!");
+          const err = await res.json().catch(() => ({}));
+          mostrarToast("Error: " + (err.detail || "Error al registrar usuario."), "error");
         }
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.detail || "Error al registrar usuario.");
+      } catch(e) {
+        console.error("Error al registrar usuario:", e);
+        mostrarToast("Error de conexión al registrar usuario.", "error");
       }
     }
 
     async function eliminarUsuarioReal(id, username) {
       if (id === 1 || username === 'isanchez' || username === 'isaac') {
-        alert("🔒 ACCESO DENEGADO: Tu cuenta de Dueño & Líder es intocable y jamás puede ser eliminada.");
+        mostrarToast("🔒 ACCESO DENEGADO: Tu cuenta de Dueño & Líder es intocable y jamás puede ser eliminada.", "error");
         return;
       }
-      if (!confirm(`¿Eliminar al colaborador @${username}?`)) return;
+      const ok = await solicitarConfirmacionPro(
+        "¿Eliminar Colaborador?",
+        `¿Confirmas la eliminación definitiva del colaborador @${username} del equipo?`,
+        "🗑️"
+      );
+      if (!ok) return;
+
       try {
         const res = await fetch(`${API_BASE}/api/usuarios/${id}`, { method: "DELETE" });
         if (res.ok) {
-          alert(`✅ Colaborador @${username} eliminado correctamente.`);
+          mostrarToast(`✅ Colaborador @${username} eliminado correctamente.`, "success");
           await loadUsuarios();
+          if (typeof renderPosVendedoresSelect === 'function') renderPosVendedoresSelect();
         } else {
           const err = await res.json().catch(() => ({}));
-          alert(err.detail || "Error al eliminar usuario.");
+          mostrarToast("Error: " + (err.detail || "Error al eliminar usuario."), "error");
         }
       } catch(e) {
-        alert("Error de conexión al eliminar usuario.");
+        mostrarToast("Error de conexión al eliminar usuario.", "error");
       }
     }
 
@@ -6482,23 +6629,45 @@
     }
 
     async function saveFiscalConfigReal() {
+      const getVal = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
       const payload = {
-        nombre_tienda: document.getElementById('fisc-name').value.trim(),
-        cedula_fiscal: document.getElementById('fisc-id').value.trim(),
-        regimen_tributario: document.getElementById('fisc-regimen').value,
-        codigo_actividad: document.getElementById('fisc-actividad').value.trim(),
-        telefono: document.getElementById('fisc-tel').value.trim(),
-        correo: document.getElementById('fisc-mail').value.trim(),
-        direccion: document.getElementById('fisc-dir').value.trim()
+        nombre_tienda: getVal('fisc-name'),
+        cedula_fiscal: getVal('fisc-id'),
+        regimen_tributario: getVal('fisc-regimen'),
+        codigo_actividad: getVal('fisc-actividad'),
+        telefono: getVal('fisc-tel'),
+        correo: getVal('fisc-mail'),
+        direccion: getVal('fisc-dir')
       };
 
-      const res = await fetch(`${API_BASE}/api/configuracion/fiscal`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const res = await fetch(`${API_BASE}/api/configuracion/fiscal`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      if (res.ok) alert("Datos fiscales guardados con éxito.");
+        if (res.ok) {
+          // Sincronizar campos en módulo de personalización/configuración general
+          const syncVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+          syncVal('cfg-store-name', payload.nombre_tienda);
+          syncVal('cfg-store-id', payload.cedula_fiscal);
+          syncVal('cfg-store-tel', payload.telefono);
+          syncVal('cfg-store-email', payload.correo);
+          syncVal('cfg-store-dir', payload.direccion);
+          syncVal('cfg-store-regimen', payload.regimen_tributario);
+          syncVal('cfg-store-actividad', payload.codigo_actividad);
+          if (payload.nombre_tienda) document.getElementById('txt-brand-name').textContent = payload.nombre_tienda;
+
+          mostrarToast("✅ Datos fiscales guardados exitosamente.", "success");
+        } else {
+          const err = await res.json().catch(() => ({}));
+          mostrarToast("Error al guardar datos fiscales: " + (err.detail || "Verifica los datos."), "error");
+        }
+      } catch(err) {
+        console.error("Error al guardar config fiscal:", err);
+        mostrarToast("Error de conexión al guardar datos fiscales.", "error");
+      }
     }
 
     // CLIENTES CRM SELECT & MODAL
