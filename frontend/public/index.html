@@ -4,233 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEBULOSA | INGENIERÍA & AUTOMATIZACIÓN</title>
-  <script src="https://cdn.tailwindcss.com">
-    // ========================================================
-    // ✏️ MODIFICAR USUARIOS & CREDENCIALES (SOLO DUEÑO)
-    // ========================================================
-    window.abrirModalEditarUsuario = function(userId) {
-      const u = usuariosList.find(x => x.id === userId);
-      if (!u) return;
-
-      document.getElementById('edit-usr-id').value = u.id;
-      document.getElementById('edit-usr-nombre').value = u.nombre_completo || '';
-      document.getElementById('edit-usr-user').value = u.username || '';
-      document.getElementById('edit-usr-rol').value = u.rol || 'VENDEDOR';
-      document.getElementById('edit-usr-pin').value = u.pin_seguridad || '';
-      document.getElementById('edit-usr-pass').value = u.password || '';
-      document.getElementById('edit-usr-activo').value = (u.activo === 0) ? '0' : '1';
-
-      const perms = JSON.parse(u.permisos_json || '{}');
-      document.getElementById('edit-perm-pos').checked = !!perms.pos;
-      document.getElementById('edit-perm-wms').checked = !!perms.wms;
-      document.getElementById('edit-perm-apartados').checked = !!perms.apartados;
-      document.getElementById('edit-perm-costos').checked = !!perms.costos;
-      document.getElementById('edit-perm-gastos').checked = !!perms.gastos;
-      document.getElementById('edit-perm-eliminar').checked = !!perms.eliminar_productos;
-
-      const modal = document.getElementById('modal-editar-usuario');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
-    };
-
-    window.closeModalEditarUsuario = function() {
-      const modal = document.getElementById('modal-editar-usuario');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    };
-
-    window.autoGenerarPinEdit = function() {
-      document.getElementById('edit-usr-pin').value = "" + Math.floor(1000 + Math.random() * 9000);
-    };
-
-    window.autoGenerarPassEdit = function() {
-      document.getElementById('edit-usr-pass').value = "Neb-" + Math.floor(1000 + Math.random() * 9000);
-    };
-
-    window.guardarEdicionUsuarioReal = async function() {
-      const uId = document.getElementById('edit-usr-id').value;
-      const nombre = document.getElementById('edit-usr-nombre').value.trim();
-      const username = document.getElementById('edit-usr-user').value.trim();
-      const rol = document.getElementById('edit-usr-rol').value;
-      const pin = document.getElementById('edit-usr-pin').value.trim();
-      const pass = document.getElementById('edit-usr-pass').value.trim();
-      const activo = parseInt(document.getElementById('edit-usr-activo').value);
-
-      if (!nombre || !username) {
-        alert("Por favor ingresa nombre y usuario.");
-        return;
-      }
-
-      const permisos = {
-        pos: document.getElementById('edit-perm-pos').checked,
-        wms: document.getElementById('edit-perm-wms').checked,
-        apartados: document.getElementById('edit-perm-apartados').checked,
-        costos: document.getElementById('edit-perm-costos').checked,
-        gastos: document.getElementById('edit-perm-gastos').checked,
-        eliminar_productos: document.getElementById('edit-perm-eliminar').checked
-      };
-
-      try {
-        const res = await fetch(`${API_BASE}/api/usuarios/${uId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: username,
-            nombre_completo: nombre,
-            rol: rol,
-            pin_seguridad: pin,
-            password: pass,
-            permisos_json: JSON.stringify(permisos),
-            activo: activo
-          })
-        });
-
-        if (res.ok) {
-          alert("✅ ¡Usuario y credenciales actualizados correctamente!");
-          closeModalEditarUsuario();
-          await loadUsuarios();
-        } else {
-          const err = await res.json().catch(() => ({}));
-          alert("Error: " + (err.detail || "No se pudo actualizar el usuario."));
-        }
-      } catch (err) {
-        console.error("Error al editar usuario:", err);
-        alert("Error de conexión al actualizar usuario.");
-      }
-    };
-
-    window.compartirAccesosEditadosWA = function() {
-      const nombre = document.getElementById('edit-usr-nombre').value.trim();
-      const username = document.getElementById('edit-usr-user').value.trim();
-      const pin = document.getElementById('edit-usr-pin').value.trim();
-      const pass = document.getElementById('edit-usr-pass').value.trim();
-      const rol = document.getElementById('edit-usr-rol').value;
-
-      const tel = prompt("Ingresa el número de WhatsApp del colaborador (ej: 88887777):");
-      if (!tel) return;
-
-      const texto = `Hola ${nombre}! ⚡ Te compartimos tus accesos actualizados para *NEBULOSA OS*:\n\n👤 *Usuario:* ${username}\n🔒 *Contraseña:* ${pass}\n⚡ *PIN Rápido:* ${pin}\n💼 *Rol:* ${rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
-      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
-    };
-
-    // ========================================================
-    // 🎫 CENTRO DE TICKETS & ERRORES REPORTADOS (SOLO ISAAC)
-    // ========================================================
-    let leaderTicketsList = [];
-
-    window.loadLeaderTicketsReal = async function() {
-      try {
-        const res = await fetch(`${API_BASE}/api/tickets`);
-        if (res.ok) {
-          leaderTicketsList = await res.json();
-          renderLeaderTicketsList();
-        }
-      } catch (err) {
-        console.error("Error al cargar tickets:", err);
-      }
-    };
-
-    window.renderLeaderTicketsList = function() {
-      const container = document.getElementById('tickets-container-list');
-      if (!container) return;
-
-      const filter = document.getElementById('tck-filter-status') ? document.getElementById('tck-filter-status').value : 'TODOS';
-      
-      let filtered = leaderTicketsList;
-      if (filter !== 'TODOS') {
-        filtered = leaderTicketsList.filter(t => t.estado === filter);
-      }
-
-      // Actualizar KPIs
-      const total = leaderTicketsList.length;
-      const abiertos = leaderTicketsList.filter(t => t.estado === 'ABIERTO').length;
-      const resueltos = leaderTicketsList.filter(t => t.estado === 'RESUELTO').length;
-
-      if (document.getElementById('tck-kpi-total')) document.getElementById('tck-kpi-total').textContent = total;
-      if (document.getElementById('tck-kpi-abiertos')) document.getElementById('tck-kpi-abiertos').textContent = abiertos;
-      if (document.getElementById('tck-kpi-resueltos')) document.getElementById('tck-kpi-resueltos').textContent = resueltos;
-      if (document.getElementById('tck-count-badge')) document.getElementById('tck-count-badge').textContent = filtered.length;
-      if (document.getElementById('badge-tickets-count')) document.getElementById('badge-tickets-count').textContent = abiertos;
-      if (document.getElementById('header-tickets-count')) document.getElementById('header-tickets-count').textContent = abiertos;
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-12 text-slate-500 text-xs">
-            <span class="text-2xl block mb-2">🎉</span>
-            No hay tickets o errores pendientes con el filtro seleccionado.
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = "";
-      filtered.forEach(t => {
-        const isAbierto = t.estado === 'ABIERTO';
-        const card = document.createElement('div');
-        card.className = `p-4 rounded-2xl border transition ${isAbierto ? 'bg-slate-950/90 border-red-500/30 shadow-lg shadow-red-500/5' : 'bg-slate-950/60 border-slate-800'}`;
-
-        const fechaStr = t.fecha ? new Date(t.fecha).toLocaleString('es-CR') : 'Fecha no registrada';
-
-        card.innerHTML = `
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-            <div class="flex items-center gap-2.5">
-              <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold ${isAbierto ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}">
-                ${isAbierto ? '🔴 ABIERTO' : '🟢 RESUELTO'}
-              </span>
-              <span class="text-xs font-mono font-bold text-purple-400">${t.codigo || 'TCK'}</span>
-              <span class="text-slate-500 text-[11px] font-mono">• ${fechaStr}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              ${isAbierto ? `
-                <button onclick="resolverTicketReal(${t.id})" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5">
-                  <span>✅ Marcar Resuelto</span>
-                </button>
-              ` : `
-                <span class="text-[11px] text-emerald-400 font-bold">${t.respuesta_lider || 'Resuelto'}</span>
-              `}
-              <button onclick="eliminarTicketReal(${t.id})" class="p-1.5 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Eliminar Ticket">
-                🗑️
-              </button>
-            </div>
-          </div>
-
-          <div class="pt-3 space-y-1.5">
-            <h4 class="text-xs font-extrabold text-white">${t.titulo}</h4>
-            <p class="text-xs text-slate-300 leading-relaxed">${t.descripcion}</p>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    };
-
-    window.resolverTicketReal = async function(id) {
-      try {
-        const res = await fetch(`${API_BASE}/api/tickets/${id}/resolver`, { method: 'PUT' });
-        if (res.ok) {
-          await loadLeaderTicketsReal();
-        }
-      } catch (err) {
-        console.error("Error al resolver ticket:", err);
-      }
-    };
-
-    window.eliminarTicketReal = async function(id) {
-      if (!confirm("¿Eliminar este ticket del registro?")) return;
-      try {
-        const res = await fetch(`${API_BASE}/api/tickets/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          await loadLeaderTicketsReal();
-        }
-      } catch (err) {
-        console.error("Error al eliminar ticket:", err);
-      }
-    };
-
-</script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -378,7 +152,7 @@
         </div>
 
         <!-- Botón de Tickets / Buzón de Errores de Isaac -->
-        <button onclick="switchTab('tickets')" class="px-3.5 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 text-xs font-extrabold text-purple-300 flex items-center gap-2 transition shadow-lg shadow-purple-500/20" title="Ver bandeja de errores y problemas reportados">
+        <button id="btn-header-tickets" onclick="switchTab('tickets')" class="px-3.5 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 text-xs font-extrabold text-purple-300 flex items-center gap-2 transition shadow-lg shadow-purple-500/20" title="Ver bandeja de errores y problemas reportados">
           <span>📥 Buzón de Errores</span>
           <span id="header-tickets-count" class="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-mono text-[9px] font-bold animate-pulse">0</span>
         </button>
@@ -393,7 +167,7 @@
         </button>
 
         <!-- BOTÓN RÁPIDO: MODO LIMPIO / PURGA (SOLO ISAAC) -->
-        <button onclick="abrirModalPurgaSistema()" class="px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/80 border border-red-500/50 text-xs font-bold text-red-300 flex items-center gap-1.5 transition" title="Vaciar datos de demo y dejar tienda en limpio">
+        <button id="btn-header-purga" onclick="abrirModalPurgaSistema()" class="px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/80 border border-red-500/50 text-xs font-bold text-red-300 flex items-center gap-1.5 transition" title="Vaciar datos de demo y dejar tienda en limpio">
           <span>🧹 Modo Limpio</span>
         </button>
 
@@ -461,7 +235,7 @@
       <button onclick="switchTab('usuarios')" id="tab-btn-usuarios" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap">
         👥 <span>11. Equipo & Permisos</span>
       </button>
-      <button onclick="switchTab('tickets')" id="tab-btn-tickets" class="px-3.5 py-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/50 text-purple-300 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap shadow-lg shadow-purple-500/10">
+      <button id="btn-header-tickets" onclick="switchTab('tickets')" id="tab-btn-tickets" class="px-3.5 py-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/50 text-purple-300 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap shadow-lg shadow-purple-500/10">
         🎫 <span>12. Buzón de Errores & Tickets</span>
         <span id="badge-tickets-count" class="px-2 py-0.5 rounded-full bg-red-500 text-white font-mono text-[9px] font-extrabold animate-pulse">0</span>
       </button>
@@ -1377,6 +1151,27 @@
     <!-- MÓDULO 8: PERSONALIZACIÓN WHITE-LABEL -->
     <!-- ======================================================== -->
     <section id="module-custom" class="hidden space-y-5">
+      <!-- ======================================================== -->
+      <!-- 🔥 ZONA CRÍTICA: PURGA DE BASE DE DATOS (SOLO DUEÑO)    -->
+      <!-- ======================================================== -->
+      <div id="seccion-purga-dueno" class="glass-panel rounded-2xl p-6 border border-red-500/40 bg-red-950/20 max-w-3xl space-y-4">
+        <div class="flex items-center justify-between border-b border-red-500/30 pb-3">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🔥</span>
+            <div>
+              <h3 class="text-sm font-extrabold text-red-400 uppercase tracking-wider">Zona Crítica • Purga de Sistema (Solo Dueño)</h3>
+              <p class="text-xs text-slate-300">Vacía todos los datos de prueba (ventas, proformas, apartados y stock demo) para iniciar la tienda 100% en limpio.</p>
+            </div>
+          </div>
+          <button type="button" onclick="abrirModalPurgaSistema()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition whitespace-nowrap">
+            <span>🧹 Vaciar Todo en Limpio</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400">
+          Tu usuario maestro (<span class="text-amber-300 font-bold">isanchez</span>), PIN y configuraciones de la empresa permanecen <span class="text-emerald-400 font-bold">100% protegidos e intactos</span>.
+        </p>
+      </div>
+
       <div class="glass-panel rounded-2xl p-6 space-y-5 max-w-3xl">
         <div class="border-b border-slate-800 pb-3">
           <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -1488,26 +1283,7 @@
         </div>
 
         </div>
-      <!-- ======================================================== -->
-      <!-- 🔥 ZONA CRÍTICA: PURGA DE BASE DE DATOS (SOLO DUEÑO)    -->
-      <!-- ======================================================== -->
-      <div id="seccion-purga-dueno" class="glass-panel rounded-2xl p-6 border border-red-500/40 bg-red-950/20 max-w-3xl space-y-4">
-        <div class="flex items-center justify-between border-b border-red-500/30 pb-3">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">🔥</span>
-            <div>
-              <h3 class="text-sm font-extrabold text-red-400 uppercase tracking-wider">Zona Crítica • Purga de Sistema (Solo Dueño)</h3>
-              <p class="text-xs text-slate-300">Vacía todos los datos de prueba (ventas, proformas, apartados y stock demo) para iniciar la tienda 100% en limpio.</p>
-            </div>
-          </div>
-          <button type="button" onclick="abrirModalPurgaSistema()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-red-600/30 flex items-center gap-2 transition whitespace-nowrap">
-            <span>🧹 Vaciar Todo en Limpio</span>
-          </button>
-        </div>
-        <p class="text-[11px] text-slate-400">
-          Tu usuario maestro (<span class="text-amber-300 font-bold">isanchez</span>), PIN y configuraciones de la empresa permanecen <span class="text-emerald-400 font-bold">100% protegidos e intactos</span>.
-        </p>
-      </div>
+      
     </section>
 
 
@@ -2487,6 +2263,235 @@
   <script>
 
     // ========================================================
+    // 👑 FUNCIONES DE CONTROL MAESTRO (ISAAC & TICKETS)
+    // ========================================================
+// ========================================================
+    // ✏️ MODIFICAR USUARIOS & CREDENCIALES (SOLO DUEÑO)
+    // ========================================================
+    window.abrirModalEditarUsuario = function(userId) {
+      const u = usuariosList.find(x => x.id === userId);
+      if (!u) return;
+
+      document.getElementById('edit-usr-id').value = u.id;
+      document.getElementById('edit-usr-nombre').value = u.nombre_completo || '';
+      document.getElementById('edit-usr-user').value = u.username || '';
+      document.getElementById('edit-usr-rol').value = u.rol || 'VENDEDOR';
+      document.getElementById('edit-usr-pin').value = u.pin_seguridad || '';
+      document.getElementById('edit-usr-pass').value = u.password || '';
+      document.getElementById('edit-usr-activo').value = (u.activo === 0) ? '0' : '1';
+
+      const perms = JSON.parse(u.permisos_json || '{}');
+      document.getElementById('edit-perm-pos').checked = !!perms.pos;
+      document.getElementById('edit-perm-wms').checked = !!perms.wms;
+      document.getElementById('edit-perm-apartados').checked = !!perms.apartados;
+      document.getElementById('edit-perm-costos').checked = !!perms.costos;
+      document.getElementById('edit-perm-gastos').checked = !!perms.gastos;
+      document.getElementById('edit-perm-eliminar').checked = !!perms.eliminar_productos;
+
+      const modal = document.getElementById('modal-editar-usuario');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+
+    window.closeModalEditarUsuario = function() {
+      const modal = document.getElementById('modal-editar-usuario');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+
+    window.autoGenerarPinEdit = function() {
+      document.getElementById('edit-usr-pin').value = "" + Math.floor(1000 + Math.random() * 9000);
+    };
+
+    window.autoGenerarPassEdit = function() {
+      document.getElementById('edit-usr-pass').value = "Neb-" + Math.floor(1000 + Math.random() * 9000);
+    };
+
+    window.guardarEdicionUsuarioReal = async function() {
+      const uId = document.getElementById('edit-usr-id').value;
+      const nombre = document.getElementById('edit-usr-nombre').value.trim();
+      const username = document.getElementById('edit-usr-user').value.trim();
+      const rol = document.getElementById('edit-usr-rol').value;
+      const pin = document.getElementById('edit-usr-pin').value.trim();
+      const pass = document.getElementById('edit-usr-pass').value.trim();
+      const activo = parseInt(document.getElementById('edit-usr-activo').value);
+
+      if (!nombre || !username) {
+        alert("Por favor ingresa nombre y usuario.");
+        return;
+      }
+
+      const permisos = {
+        pos: document.getElementById('edit-perm-pos').checked,
+        wms: document.getElementById('edit-perm-wms').checked,
+        apartados: document.getElementById('edit-perm-apartados').checked,
+        costos: document.getElementById('edit-perm-costos').checked,
+        gastos: document.getElementById('edit-perm-gastos').checked,
+        eliminar_productos: document.getElementById('edit-perm-eliminar').checked
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/usuarios/${uId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username,
+            nombre_completo: nombre,
+            rol: rol,
+            pin_seguridad: pin,
+            password: pass,
+            permisos_json: JSON.stringify(permisos),
+            activo: activo
+          })
+        });
+
+        if (res.ok) {
+          alert("✅ ¡Usuario y credenciales actualizados correctamente!");
+          closeModalEditarUsuario();
+          await loadUsuarios();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert("Error: " + (err.detail || "No se pudo actualizar el usuario."));
+        }
+      } catch (err) {
+        console.error("Error al editar usuario:", err);
+        alert("Error de conexión al actualizar usuario.");
+      }
+    };
+
+    window.compartirAccesosEditadosWA = function() {
+      const nombre = document.getElementById('edit-usr-nombre').value.trim();
+      const username = document.getElementById('edit-usr-user').value.trim();
+      const pin = document.getElementById('edit-usr-pin').value.trim();
+      const pass = document.getElementById('edit-usr-pass').value.trim();
+      const rol = document.getElementById('edit-usr-rol').value;
+
+      const tel = prompt("Ingresa el número de WhatsApp del colaborador (ej: 88887777):");
+      if (!tel) return;
+
+      const texto = `Hola ${nombre}! ⚡ Te compartimos tus accesos actualizados para *NEBULOSA OS*:\n\n👤 *Usuario:* ${username}\n🔒 *Contraseña:* ${pass}\n⚡ *PIN Rápido:* ${pin}\n💼 *Rol:* ${rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
+      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
+    };
+
+    // ========================================================
+    // 🎫 CENTRO DE TICKETS & ERRORES REPORTADOS (SOLO ISAAC)
+    // ========================================================
+    let leaderTicketsList = [];
+
+    window.loadLeaderTicketsReal = window.loadTickets = async function() {
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets`);
+        if (res.ok) {
+          leaderTicketsList = await res.json();
+          renderLeaderTicketsList();
+        }
+      } catch (err) {
+        console.error("Error al cargar tickets:", err);
+      }
+    };
+
+    window.renderLeaderTicketsList = function() {
+      const container = document.getElementById('tickets-container-list');
+      if (!container) return;
+
+      const filter = document.getElementById('tck-filter-status') ? document.getElementById('tck-filter-status').value : 'TODOS';
+      
+      let filtered = leaderTicketsList;
+      if (filter !== 'TODOS') {
+        filtered = leaderTicketsList.filter(t => t.estado === filter);
+      }
+
+      // Actualizar KPIs
+      const total = leaderTicketsList.length;
+      const abiertos = leaderTicketsList.filter(t => t.estado === 'ABIERTO').length;
+      const resueltos = leaderTicketsList.filter(t => t.estado === 'RESUELTO').length;
+
+      if (document.getElementById('tck-kpi-total')) document.getElementById('tck-kpi-total').textContent = total;
+      if (document.getElementById('tck-kpi-abiertos')) document.getElementById('tck-kpi-abiertos').textContent = abiertos;
+      if (document.getElementById('tck-kpi-resueltos')) document.getElementById('tck-kpi-resueltos').textContent = resueltos;
+      if (document.getElementById('tck-count-badge')) document.getElementById('tck-count-badge').textContent = filtered.length;
+      if (document.getElementById('badge-tickets-count')) document.getElementById('badge-tickets-count').textContent = abiertos;
+      if (document.getElementById('header-tickets-count')) document.getElementById('header-tickets-count').textContent = abiertos;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-xs">
+            <span class="text-2xl block mb-2">🎉</span>
+            No hay tickets o errores pendientes con el filtro seleccionado.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = "";
+      filtered.forEach(t => {
+        const isAbierto = t.estado === 'ABIERTO';
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-2xl border transition ${isAbierto ? 'bg-slate-950/90 border-red-500/30 shadow-lg shadow-red-500/5' : 'bg-slate-950/60 border-slate-800'}`;
+
+        const fechaStr = t.fecha ? new Date(t.fecha).toLocaleString('es-CR') : 'Fecha no registrada';
+
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold ${isAbierto ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}">
+                ${isAbierto ? '🔴 ABIERTO' : '🟢 RESUELTO'}
+              </span>
+              <span class="text-xs font-mono font-bold text-purple-400">${t.codigo || 'TCK'}</span>
+              <span class="text-slate-500 text-[11px] font-mono">• ${fechaStr}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${isAbierto ? `
+                <button onclick="resolverTicketReal(${t.id})" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5">
+                  <span>✅ Marcar Resuelto</span>
+                </button>
+              ` : `
+                <span class="text-[11px] text-emerald-400 font-bold">${t.respuesta_lider || 'Resuelto'}</span>
+              `}
+              <button onclick="eliminarTicketReal(${t.id})" class="p-1.5 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Eliminar Ticket">
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-3 space-y-1.5">
+            <h4 class="text-xs font-extrabold text-white">${t.titulo}</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">${t.descripcion}</p>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    };
+
+    window.resolverTicketReal = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets/${id}/resolver`, { method: 'PUT' });
+        if (res.ok) {
+          await loadLeaderTicketsReal();
+        }
+      } catch (err) {
+        console.error("Error al resolver ticket:", err);
+      }
+    };
+
+    window.eliminarTicketReal = async function(id) {
+      if (!confirm("¿Eliminar este ticket del registro?")) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadLeaderTicketsReal();
+        }
+      } catch (err) {
+        console.error("Error al eliminar ticket:", err);
+      }
+    };
+
+
+    // ========================================================
     // 🌐 CONFIGURACIÓN GLOBAL DE API
     // ========================================================
     var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
@@ -2513,6 +2518,20 @@
     let userModulesConfig = JSON.parse(localStorage.getItem('nebulosa_modules_config') || 'null');
     if (!userModulesConfig || !Array.isArray(userModulesConfig)) {
       userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
+    } else {
+      // Sincronizar módulos nuevos del sistema (como tickets) automáticamente
+      DEFAULT_MODULES_CONFIG.forEach(dm => {
+        const idx = userModulesConfig.findIndex(um => um.id === dm.id);
+        if (idx === -1) {
+          userModulesConfig.push(JSON.parse(JSON.stringify(dm)));
+        } else {
+          if (dm.id === 'tickets') {
+            userModulesConfig[idx].enabled = true;
+            userModulesConfig[idx].roles = ['DUENO'];
+          }
+        }
+      });
+      try { localStorage.setItem('nebulosa_modules_config', JSON.stringify(userModulesConfig)); } catch(e){}
     }
 
     window.ejecutarLogin = async function(e) {
@@ -2646,10 +2665,15 @@
       const nameEl = document.getElementById('header-user-name');
       const roleEl = document.getElementById('header-user-role');
       const avatarEl = document.getElementById('user-avatar-circle');
+      const btnTickets = document.getElementById('btn-header-tickets');
+      const btnPurga = document.getElementById('btn-header-purga');
+      const btnMaster = document.getElementById('btn-master-panel');
+
+      const isOwner = currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO' || currentLoggedUser.username === 'isanchez';
 
       if (nameEl) nameEl.textContent = currentLoggedUser.nombre_completo || currentLoggedUser.username;
       if (roleEl) {
-        if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
+        if (isOwner) {
           roleEl.textContent = "👑 DUEÑO INTOCABLE";
           roleEl.className = "text-[9px] text-amber-300 font-mono font-bold uppercase block";
           if (avatarEl) {
@@ -2664,6 +2688,15 @@
             avatarEl.className = "w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow";
           }
         }
+      }
+
+      if (btnTickets) btnTickets.style.display = isOwner ? 'flex' : 'none';
+      if (btnPurga) btnPurga.style.display = isOwner ? 'flex' : 'none';
+      if (btnMaster) btnMaster.style.display = isOwner ? 'flex' : 'none';
+
+      // Actualizar tickets y KPIs inmediatamente si es dueño
+      if (isOwner && typeof loadLeaderTicketsReal === 'function') {
+        loadLeaderTicketsReal();
       }
     };
 
@@ -3689,7 +3722,7 @@
 
         if (res.ok) {
           const data = await res.json();
-          window.open(`${API_BASE}${data.pdf_url}`, '_blank');
+          window.open(`${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${data.id || data.proforma_id}/pdf`, \'_blank\');
           cart = [];
           clearDiscount();
           updateCartUI();
@@ -3815,9 +3848,7 @@
             </div>
           </div>
           <div class="flex justify-between items-center pt-3 border-t border-slate-800/80">
-            <a href="${API_BASE}${p.pdf_url || '#'}" target="_blank" class="text-xs text-cyan-400 hover:underline font-bold flex items-center gap-1">
-              📥 Ver PDF Proforma
-            </a>
+            <a href="${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${p.id}/pdf" target="_blank" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-slate-950 text-xs text-cyan-300 font-extrabold flex items-center gap-1.5 transition border border-cyan-500/30">📄 Descargar PDF</a>
             <span class="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">Pendiente</span>
           </div>
         `;
@@ -3893,7 +3924,7 @@
       if (res.ok) {
         const data = await res.json();
         closeModalCreateProforma();
-        window.open(`${API_BASE}${data.pdf_url}`, '_blank');
+        window.open(`${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${data.id || data.proforma_id}/pdf`, \'_blank\');
         cart = [];
         updateCartUI();
         await loadProformas();
@@ -5858,7 +5889,7 @@
           <td class="p-3 font-mono text-slate-400">CRC ${f.iva.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td class="p-3 font-mono font-bold text-white">CRC ${f.total.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td class="p-3">
-            ${f.pdf_url ? `<a href="${API_BASE}${f.pdf_url}" target="_blank" class="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition text-[11px] border border-red-500/30">📥 PDF</a>` : '--'}
+            <a href="${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/facturas/${f.id}/pdf" target="_blank" class="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition text-[11px] border border-red-500/30">📄 Ver PDF</a>
           </td>
         `;
         tbody.appendChild(tr);
