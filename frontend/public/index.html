@@ -4,7 +4,231 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEBULOSA | INGENIERÍA & AUTOMATIZACIÓN</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com">
+    // ========================================================
+    // ✏️ MODIFICAR USUARIOS & CREDENCIALES (SOLO DUEÑO)
+    // ========================================================
+    window.abrirModalEditarUsuario = function(userId) {
+      const u = usuariosList.find(x => x.id === userId);
+      if (!u) return;
+
+      document.getElementById('edit-usr-id').value = u.id;
+      document.getElementById('edit-usr-nombre').value = u.nombre_completo || '';
+      document.getElementById('edit-usr-user').value = u.username || '';
+      document.getElementById('edit-usr-rol').value = u.rol || 'VENDEDOR';
+      document.getElementById('edit-usr-pin').value = u.pin_seguridad || '';
+      document.getElementById('edit-usr-pass').value = u.password || '';
+      document.getElementById('edit-usr-activo').value = (u.activo === 0) ? '0' : '1';
+
+      const perms = JSON.parse(u.permisos_json || '{}');
+      document.getElementById('edit-perm-pos').checked = !!perms.pos;
+      document.getElementById('edit-perm-wms').checked = !!perms.wms;
+      document.getElementById('edit-perm-apartados').checked = !!perms.apartados;
+      document.getElementById('edit-perm-costos').checked = !!perms.costos;
+      document.getElementById('edit-perm-gastos').checked = !!perms.gastos;
+      document.getElementById('edit-perm-eliminar').checked = !!perms.eliminar_productos;
+
+      const modal = document.getElementById('modal-editar-usuario');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+
+    window.closeModalEditarUsuario = function() {
+      const modal = document.getElementById('modal-editar-usuario');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+
+    window.autoGenerarPinEdit = function() {
+      document.getElementById('edit-usr-pin').value = "" + Math.floor(1000 + Math.random() * 9000);
+    };
+
+    window.autoGenerarPassEdit = function() {
+      document.getElementById('edit-usr-pass').value = "Neb-" + Math.floor(1000 + Math.random() * 9000);
+    };
+
+    window.guardarEdicionUsuarioReal = async function() {
+      const uId = document.getElementById('edit-usr-id').value;
+      const nombre = document.getElementById('edit-usr-nombre').value.trim();
+      const username = document.getElementById('edit-usr-user').value.trim();
+      const rol = document.getElementById('edit-usr-rol').value;
+      const pin = document.getElementById('edit-usr-pin').value.trim();
+      const pass = document.getElementById('edit-usr-pass').value.trim();
+      const activo = parseInt(document.getElementById('edit-usr-activo').value);
+
+      if (!nombre || !username) {
+        alert("Por favor ingresa nombre y usuario.");
+        return;
+      }
+
+      const permisos = {
+        pos: document.getElementById('edit-perm-pos').checked,
+        wms: document.getElementById('edit-perm-wms').checked,
+        apartados: document.getElementById('edit-perm-apartados').checked,
+        costos: document.getElementById('edit-perm-costos').checked,
+        gastos: document.getElementById('edit-perm-gastos').checked,
+        eliminar_productos: document.getElementById('edit-perm-eliminar').checked
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/usuarios/${uId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username,
+            nombre_completo: nombre,
+            rol: rol,
+            pin_seguridad: pin,
+            password: pass,
+            permisos_json: JSON.stringify(permisos),
+            activo: activo
+          })
+        });
+
+        if (res.ok) {
+          alert("✅ ¡Usuario y credenciales actualizados correctamente!");
+          closeModalEditarUsuario();
+          await loadUsuarios();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          alert("Error: " + (err.detail || "No se pudo actualizar el usuario."));
+        }
+      } catch (err) {
+        console.error("Error al editar usuario:", err);
+        alert("Error de conexión al actualizar usuario.");
+      }
+    };
+
+    window.compartirAccesosEditadosWA = function() {
+      const nombre = document.getElementById('edit-usr-nombre').value.trim();
+      const username = document.getElementById('edit-usr-user').value.trim();
+      const pin = document.getElementById('edit-usr-pin').value.trim();
+      const pass = document.getElementById('edit-usr-pass').value.trim();
+      const rol = document.getElementById('edit-usr-rol').value;
+
+      const tel = prompt("Ingresa el número de WhatsApp del colaborador (ej: 88887777):");
+      if (!tel) return;
+
+      const texto = `Hola ${nombre}! ⚡ Te compartimos tus accesos actualizados para *NEBULOSA OS*:\n\n👤 *Usuario:* ${username}\n🔒 *Contraseña:* ${pass}\n⚡ *PIN Rápido:* ${pin}\n💼 *Rol:* ${rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
+      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
+    };
+
+    // ========================================================
+    // 🎫 CENTRO DE TICKETS & ERRORES REPORTADOS (SOLO ISAAC)
+    // ========================================================
+    let leaderTicketsList = [];
+
+    window.loadLeaderTicketsReal = async function() {
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets`);
+        if (res.ok) {
+          leaderTicketsList = await res.json();
+          renderLeaderTicketsList();
+        }
+      } catch (err) {
+        console.error("Error al cargar tickets:", err);
+      }
+    };
+
+    window.renderLeaderTicketsList = function() {
+      const container = document.getElementById('tickets-container-list');
+      if (!container) return;
+
+      const filter = document.getElementById('tck-filter-status') ? document.getElementById('tck-filter-status').value : 'TODOS';
+      
+      let filtered = leaderTicketsList;
+      if (filter !== 'TODOS') {
+        filtered = leaderTicketsList.filter(t => t.estado === filter);
+      }
+
+      // Actualizar KPIs
+      const total = leaderTicketsList.length;
+      const abiertos = leaderTicketsList.filter(t => t.estado === 'ABIERTO').length;
+      const resueltos = leaderTicketsList.filter(t => t.estado === 'RESUELTO').length;
+
+      if (document.getElementById('tck-kpi-total')) document.getElementById('tck-kpi-total').textContent = total;
+      if (document.getElementById('tck-kpi-abiertos')) document.getElementById('tck-kpi-abiertos').textContent = abiertos;
+      if (document.getElementById('tck-kpi-resueltos')) document.getElementById('tck-kpi-resueltos').textContent = resueltos;
+      if (document.getElementById('tck-count-badge')) document.getElementById('tck-count-badge').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-xs">
+            <span class="text-2xl block mb-2">🎉</span>
+            No hay tickets o errores pendientes con el filtro seleccionado.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = "";
+      filtered.forEach(t => {
+        const isAbierto = t.estado === 'ABIERTO';
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-2xl border transition ${isAbierto ? 'bg-slate-950/90 border-red-500/30 shadow-lg shadow-red-500/5' : 'bg-slate-950/60 border-slate-800'}`;
+
+        const fechaStr = t.fecha ? new Date(t.fecha).toLocaleString('es-CR') : 'Fecha no registrada';
+
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+            <div class="flex items-center gap-2.5">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold ${isAbierto ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}">
+                ${isAbierto ? '🔴 ABIERTO' : '🟢 RESUELTO'}
+              </span>
+              <span class="text-xs font-mono font-bold text-purple-400">${t.codigo || 'TCK'}</span>
+              <span class="text-slate-500 text-[11px] font-mono">• ${fechaStr}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${isAbierto ? `
+                <button onclick="resolverTicketReal(${t.id})" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md transition flex items-center gap-1.5">
+                  <span>✅ Marcar Resuelto</span>
+                </button>
+              ` : `
+                <span class="text-[11px] text-emerald-400 font-bold">${t.respuesta_lider || 'Resuelto'}</span>
+              `}
+              <button onclick="eliminarTicketReal(${t.id})" class="p-1.5 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition" title="Eliminar Ticket">
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-3 space-y-1.5">
+            <h4 class="text-xs font-extrabold text-white">${t.titulo}</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">${t.descripcion}</p>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    };
+
+    window.resolverTicketReal = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets/${id}/resolver`, { method: 'PUT' });
+        if (res.ok) {
+          await loadLeaderTicketsReal();
+        }
+      } catch (err) {
+        console.error("Error al resolver ticket:", err);
+      }
+    };
+
+    window.eliminarTicketReal = async function(id) {
+      if (!confirm("¿Eliminar este ticket del registro?")) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/tickets/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          await loadLeaderTicketsReal();
+        }
+      } catch (err) {
+        console.error("Error al eliminar ticket:", err);
+      }
+    };
+
+</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -39,6 +263,22 @@
     ::-webkit-scrollbar-track { background: #07090e; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 25px rgba(112, 0, 255, 0.2), inset 0 0 15px rgba(0, 240, 255, 0.05); }
+      50% { box-shadow: 0 0 50px rgba(0, 240, 255, 0.35), inset 0 0 25px rgba(112, 0, 255, 0.15); }
+    }
+    .login-animated-card {
+      animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards, pulseGlow 6s ease-in-out infinite;
+    }
+    .modal-animated-card {
+      animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
   </style>
   <!-- Generadores de Códigos de Barra y QR -->
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
@@ -59,7 +299,7 @@
       <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl"></div>
     </div>
 
-    <div class="relative w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl">
+    <div class="relative w-full max-w-md bg-slate-950/85 border border-purple-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl login-animated-card">
       <!-- Logo y Brand -->
       <div class="text-center space-y-2 mb-8">
         <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-cyan-400 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/30 text-3xl font-extrabold text-white">
@@ -1416,6 +1656,72 @@
       </div>
     </section>
 
+  
+    <!-- ======================================================== -->
+    <!-- 🎫 MÓDULO EXCLUSIVO: TICKETS & ERRORES (SOLO ISAAC)      -->
+    <!-- ======================================================== -->
+    <section id="module-tickets" class="hidden space-y-6">
+      <!-- HEADER CON KPIS -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-3xl border border-purple-500/30">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-3xl font-bold shadow-lg shadow-purple-600/30 text-white">
+            🎫
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-xl font-extrabold text-white tracking-tight">Centro de Control de Errores & Reportes</h2>
+              <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold uppercase">👑 Exclusivo Isaac</span>
+            </div>
+            <p class="text-xs text-slate-400">Bandeja centralizada de problemas, fallas y reportes enviados por el equipo de colaboradores.</p>
+          </div>
+        </div>
+
+        <!-- KPIS RÁPIDOS -->
+        <div class="flex items-center gap-3">
+          <div class="px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center min-w-[90px]">
+            <span class="text-[10px] text-slate-400 uppercase font-mono font-bold block">Total</span>
+            <span id="tck-kpi-total" class="text-lg font-extrabold text-white font-mono">0</span>
+          </div>
+          <div class="px-4 py-2.5 rounded-2xl bg-red-950/30 border border-red-500/30 text-center min-w-[90px]">
+            <span class="text-[10px] text-red-400 uppercase font-mono font-bold block">Abiertos</span>
+            <span id="tck-kpi-abiertos" class="text-lg font-extrabold text-red-300 font-mono">0</span>
+          </div>
+          <div class="px-4 py-2.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 text-center min-w-[90px]">
+            <span class="text-[10px] text-emerald-400 uppercase font-mono font-bold block">Resueltos</span>
+            <span id="tck-kpi-resueltos" class="text-lg font-extrabold text-emerald-300 font-mono">0</span>
+          </div>
+          <button onclick="loadLeaderTicketsReal()" class="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition" title="Refrescar">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTRO Y LISTA DE TICKETS -->
+      <div class="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-white">Listado de Reportes Recibidos</span>
+            <span id="tck-count-badge" class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-mono font-bold">0</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <label class="text-slate-400 font-bold">Filtrar Estado:</label>
+            <select id="tck-filter-status" onchange="renderLeaderTicketsList()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-white font-bold outline-none focus:border-purple-400">
+              <option value="TODOS">Todos los Estados</option>
+              <option value="ABIERTO">🔴 Solo Abiertos</option>
+              <option value="RESUELTO">🟢 Solo Resueltos</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="tickets-container-list" class="space-y-3">
+          <!-- Render dinámico de tickets -->
+          <div class="text-center py-12 text-slate-500 text-xs">
+            Cargando tickets reportados...
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ======================================================== -->
@@ -2123,9 +2429,9 @@
       { id: 'proveedores', name: 'Proveedores & Marcas', icon: '🏭', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
       { id: 'gastos', name: 'Gastos de Tienda', icon: '🧾', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
       { id: 'fiscal', name: 'Historial Facturas', icon: '💰', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
-      { id: 'crm', name: 'WhatsApp & CRM', icon: '💬', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
-      { id: 'ai', name: 'Auditoría IA', icon: '🧠', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'tickets', name: 'Errores & Tickets', icon: '🎫', roles: ['DUENO'], enabled: true },
       { id: 'usuarios', name: 'Equipo & Roles', icon: '👥', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'ai', name: 'Auditoría IA', icon: '🧠', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
       { id: 'custom', name: 'Configuración', icon: '⚙️', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true }
     ];
 
@@ -2505,7 +2811,7 @@
 
     // NAVEGACIÓN MODULAR DE PESTAÑAS
     function switchTab(tabId) {
-      const tabs = ['pos', 'proformas', 'wms', 'apartados', 'crm', 'fiscal', 'ai', 'custom', 'gastos', 'proveedores', 'usuarios'];
+      const tabs = ['pos', 'proformas', 'wms', 'apartados', 'crm', 'fiscal', 'ai', 'custom', 'gastos', 'proveedores', 'usuarios', 'tickets'];
       tabs.forEach(t => {
         const sec = document.getElementById(`module-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
@@ -2535,6 +2841,7 @@
         loadProveedores();
         loadCompras();
       }
+      if (tabId === 'tickets') loadLeaderTicketsReal();
       if (tabId === 'usuarios') {
         loadUsuarios();
       }
@@ -4403,6 +4710,116 @@
     </div>
   </div>
 
+
+  <!-- ======================================================== -->
+  <!-- ✏️ MODAL: EDITAR COLABORADOR & CAMBIAR ACCESOS           -->
+  <!-- ======================================================== -->
+  <div id="modal-editar-usuario" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full p-6 rounded-3xl border-purple-500/40 space-y-4 max-h-[90vh] overflow-y-auto modal-animated-card">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✏️</span>
+          <div>
+            <h3 class="text-sm font-bold text-white">Modificar Usuario & Credenciales</h3>
+            <p class="text-[10px] text-slate-400">Edita contraseñas, PINs de caja y permisos del colaborador.</p>
+          </div>
+        </div>
+        <button onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <input type="hidden" id="edit-usr-id" />
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Nombre Completo:</label>
+            <input type="text" id="edit-usr-nombre" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400" />
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Usuario:</label>
+            <input type="text" id="edit-usr-user" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-purple-400 uppercase block mb-1">Rol Asignado:</label>
+            <select id="edit-usr-rol" class="w-full bg-slate-950 border border-purple-500/50 px-3 py-2 rounded-xl text-white outline-none font-bold">
+              <option value="VENDEDOR">🛍️ Vendedor / Cajero</option>
+              <option value="JEFE_BODEGA">📦 Jefe de Bodega</option>
+              <option value="ADMINISTRADOR">🏬 Administrador</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between">
+              <label class="text-[10px] font-bold text-slate-400 uppercase">PIN de Caja:</label>
+              <button type="button" onclick="autoGenerarPinEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Nuevo</button>
+            </div>
+            <input type="text" id="edit-usr-pin" maxlength="6" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono text-center tracking-widest font-bold" />
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between">
+            <label class="text-[10px] font-bold text-slate-400 uppercase">Nueva Contraseña de Acceso:</label>
+            <button type="button" onclick="autoGenerarPassEdit()" class="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold">⚡ Generar Clave</button>
+          </div>
+          <input type="text" id="edit-usr-pass" placeholder="Escribe nueva clave o genera una automática" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl text-white outline-none focus:border-purple-400 font-mono" />
+        </div>
+
+        <!-- PERMISOS MODULARES -->
+        <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-2xl space-y-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase block">Permisos Específicos:</span>
+          <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-pos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Punto de Venta (POS)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-wms" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Inventario WMS
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-apartados" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Apartados & Cuotas
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-costos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Ver Costos Reales
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-gastos" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Gestionar Gastos
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="edit-perm-eliminar" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0"> Eliminar Productos
+            </label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
+          <div>
+            <strong class="text-white text-xs block">Estado de la Cuenta:</strong>
+            <span class="text-[10px] text-slate-400">Si se suspende, el colaborador no podrá ingresar.</span>
+          </div>
+          <select id="edit-usr-activo" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-bold outline-none">
+            <option value="1">🟢 Activo</option>
+            <option value="0">🔴 Suspendido</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+        <button type="button" onclick="closeModalEditarUsuario()" class="text-slate-400 hover:text-white text-xs font-bold">
+          Cancelar
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="compartirAccesosEditadosWA()" class="px-3 py-2 rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 text-xs font-bold transition">
+            📲 WhatsApp
+          </button>
+          <button type="button" onclick="guardarEdicionUsuarioReal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 hover:opacity-95 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition">
+            💾 Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
         </html>
       `);
@@ -4765,10 +5182,15 @@
             </span>
           </td>
           <td class="p-3 text-right">
-            ${isMaster 
-              ? '<span class="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold">👑 INTOCABLE</span>'
-              : `<button onclick="eliminarUsuarioReal(${u.id}, '${u.username}')" class="px-2.5 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold transition">🗑️ Eliminar</button>`
-            }
+            <div class="flex items-center justify-end gap-1.5">
+              <button onclick="abrirModalEditarUsuario(${u.id})" class="px-2.5 py-1 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold transition" title="Modificar claves, PIN y permisos">
+                ✏️ Editar
+              </button>
+              ${isMaster 
+                ? '<span class="px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold">👑 INTOCABLE</span>'
+                : `<button onclick="eliminarUsuarioReal(${u.id}, '${u.username}')" class="px-2.5 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold transition">🗑️ Eliminar</button>`
+              }
+            </div>
           </td>
         `;
         tbody.appendChild(tr);

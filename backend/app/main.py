@@ -1806,6 +1806,15 @@ def resolver_ticket(ticket_id: int, db: Session = Depends(get_db)):
     db.commit()
     return t
 
+@app.delete("/api/tickets/{ticket_id}")
+def eliminar_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    t = db.query(DBTicket).filter(DBTicket.id == ticket_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    db.delete(t)
+    db.commit()
+    return {"status": "ok", "message": "Ticket eliminado correctamente"}
+
 # ==========================================
 # 9. REPORTES GENERALES & BUSINESS ANALYTICS (NATIVO)
 # ==========================================
