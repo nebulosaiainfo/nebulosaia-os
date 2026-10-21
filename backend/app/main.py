@@ -2218,6 +2218,15 @@ def purgar_sistema_produccion(req: PurgeRequest, db: Session = Depends(get_db)):
         "usuario_protegido": "Isaac (Dueño & Líder)"
     }
 
+
+@app.get("/")
+def serve_index_no_cache():
+    resp = FileResponse(FRONTEND_DIR / "index.html")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
 FRONTEND_DIR = BASE_DIR / "frontend" / "public"
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="static")
