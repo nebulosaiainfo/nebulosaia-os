@@ -2,7 +2,12 @@
 <html lang="es" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEBULOSA OS">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#07090E">
   <title>NEBULOSA | INGENIERÍA & AUTOMATIZACIÓN</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,6 +60,55 @@
       animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
+    /* ======================================================== */
+    /* 📱 OPTIMIZACIONES PARA DISPOSITIVOS MÓVILES E iOS SAFARI  */
+    /* ======================================================== */
+    html {
+      -webkit-text-size-adjust: 100%;
+      height: 100%;
+    }
+    body {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+
+    /* Prevenir zoom automático al hacer tap en inputs en iPhone (iOS requiere font-size >= 16px) */
+    @media screen and (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+      button, a {
+        touch-action: manipulation;
+      }
+    }
+
+    /* Desplazamiento táctil fluido nativo para iOS */
+    .touch-scroll, #nav-modules-container, .overflow-x-auto, .overflow-y-auto {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
+    /* Ocultar barra de scroll en navegación de pestañas tipo App nativa */
+    #nav-modules-container::-webkit-scrollbar {
+      display: none;
+    }
+    #nav-modules-container {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    /* Modales con altura dinámica que respetan el teclado de iOS */
+    @supports (height: 100dvh) {
+      .modal-animated-card {
+        max-height: 85dvh;
+      }
+    }
   </style>
   <!-- Generadores de Códigos de Barra y QR -->
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
@@ -291,9 +345,7 @@
             <div>
               <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Vendedor Asignado:</label>
               <select id="pos-vendedor-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-purple-300 font-bold outline-none focus:border-purple-400 cursor-pointer">
-                <option value="Carlos Méndez">Carlos Méndez (Ventas)</option>
-                <option value="Laura Chaves">Laura Chaves (Moda)</option>
-                <option value="Isaac Sánchez">Isaac Sánchez (Líder)</option>
+                <!-- Se poblará dinámicamente según el equipo de usuarios real -->
               </select>
             </div>
             <div>
@@ -403,6 +455,14 @@
               </div>
             </div>
           </div>
+
+        <!-- BOTÓN FLOTANTE MÓVIL / iOS PARA SALTAR AL COBRO -->
+        <div class="lg:hidden sticky bottom-3 z-30 mb-3">
+          <button id="pos-mobile-cart-btn" onclick="document.getElementById('pos-cart-items').scrollIntoView({behavior: 'smooth'})"
+            class="hidden w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-indigo-600 text-white font-extrabold text-sm shadow-2xl shadow-purple-600/40 flex items-center justify-center gap-2 border border-cyan-400/30 animate-pulse">
+            🛒 Carrito • Proceder a Cobro ➔
+          </button>
+        </div>
 
           <!-- TOTALES -->
           <div class="space-y-1 pt-1 text-xs">
@@ -3325,6 +3385,7 @@
           // Actualizar UI con perfil y módulos
           try { actualizarPerfilHeader(); } catch(err) { console.error(err); }
           try { renderModularNav(); } catch(err) { console.error(err); }
+          try { renderPosVendedoresSelect(); } catch(err) { console.error(err); }
 
           if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
             mostrarToast("👑 ¡Bienvenido, Isaac Sánchez! Modo Líder Maestro Activo.", "success");
@@ -3374,6 +3435,7 @@
           }
           actualizarPerfilHeader();
           renderModularNav();
+          try { renderPosVendedoresSelect(); } catch(err){}
           return;
         } catch(e) {
           localStorage.removeItem('nebulosa_session');
@@ -4255,6 +4317,19 @@
     function updateCartUI() {
       const container = document.getElementById('pos-cart-items');
       container.innerHTML = "";
+      const mobileBar = document.getElementById('pos-mobile-cart-btn');
+      const totalUnits = cart.reduce((acc, i) => acc + i.cantidad, 0);
+      const totalColones = cart.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
+
+      if (mobileBar) {
+        if (cart.length > 0) {
+          mobileBar.classList.remove('hidden');
+          mobileBar.innerHTML = `🛒 Carrito (${totalUnits} prenda${totalUnits > 1 ? 's' : ''}) • CRC ${totalColones.toLocaleString('en-US', {minimumFractionDigits: 2})} ➔`;
+        } else {
+          mobileBar.classList.add('hidden');
+        }
+      }
+
       if (cart.length === 0) {
         container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs italic">El carrito está vacío. Selecciona productos del catálogo.</div>`;
       } else {
@@ -5717,12 +5792,67 @@
       }
     }
 
+    // Renderizar dinámicamente el selector de vendedores según el equipo real
+    window.renderPosVendedoresSelect = function() {
+      const sel = document.getElementById('pos-vendedor-select');
+      if (!sel) return;
+      const prevVal = sel.value;
+      sel.innerHTML = "";
+
+      // Si aún no ha cargado usuariosList, usar usuario en sesión o Líder por defecto
+      if (!usuariosList || usuariosList.length === 0) {
+        if (currentLoggedUser) {
+          const myName = currentLoggedUser.nombre_completo || currentLoggedUser.username;
+          sel.innerHTML = `<option value="${myName}">${myName} (${currentLoggedUser.rol || 'Líder'})</option>`;
+        } else {
+          sel.innerHTML = `<option value="Isaac Sánchez">Isaac Sánchez (Líder / Dueño)</option>`;
+        }
+        return;
+      }
+
+      // Filtrar usuarios activos de la base de datos
+      const activos = usuariosList.filter(u => u.activo !== 0);
+      if (activos.length === 0) {
+        sel.innerHTML = `<option value="Isaac Sánchez">Isaac Sánchez (Líder / Dueño)</option>`;
+        return;
+      }
+
+      activos.forEach(u => {
+        const opt = document.createElement('option');
+        const nombre = u.nombre_completo || u.username;
+        opt.value = nombre;
+        let rolEtiqueta = 'Vendedor';
+        if (u.rol === 'DUENO' || u.is_master) rolEtiqueta = 'Líder / Dueño';
+        else if (u.rol === 'JEFE_BODEGA') rolEtiqueta = 'Bodega';
+        else if (u.rol === 'VENDEDOR') rolEtiqueta = 'Ventas / Caja';
+        else if (u.rol === 'ASESOR_CRM') rolEtiqueta = 'Asesor CRM';
+        else if (u.rol === 'ADMINISTRADOR') rolEtiqueta = 'Administrador';
+        else rolEtiqueta = u.rol;
+
+        opt.textContent = `${nombre} (${rolEtiqueta})`;
+        sel.appendChild(opt);
+      });
+
+      // Auto-seleccionar: si había un valor previo válido, mantenerlo; sino, auto-seleccionar al usuario logueado
+      if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+        sel.value = prevVal;
+      } else if (currentLoggedUser) {
+        const myName = (currentLoggedUser.nombre_completo || currentLoggedUser.username).toLowerCase();
+        const found = Array.from(sel.options).find(o => {
+          const v = o.value.toLowerCase();
+          return v.includes(myName) || myName.includes(v);
+        });
+        if (found) sel.value = found.value;
+      }
+    };
+
     async function loadUsuarios() {
       try {
         const res = await fetch(`${API_BASE}/api/usuarios`);
         if (res.ok) {
           usuariosList = await res.json();
           renderUsuarios();
+          renderPosVendedoresSelect();
         }
       } catch (err) {
         console.error("Error cargando usuarios:", err);
@@ -5809,18 +5939,6 @@
         setCheck('perm-eliminar', false);
         setCheck('perm-ajustes', false);
         setCheck('perm-gastos', false);
-      }
-    }
-
-    async function loadUsuarios() {
-      try {
-        const res = await fetch(`${API_BASE}/api/usuarios`);
-        if (res.ok) {
-          usuariosList = await res.json();
-          renderUsuarios();
-        }
-      } catch (err) {
-        console.error("Error cargando usuarios:", err);
       }
     }
 
