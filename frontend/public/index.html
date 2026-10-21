@@ -2494,7 +2494,7 @@
     // ========================================================
     // 🌐 CONFIGURACIÓN GLOBAL DE API
     // ========================================================
-    var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
+    var API_BASE = (window.location.protocol === 'file:') ? 'http://127.0.0.1:8000' : '';
 
     // ========================================================
     // 🔐 SISTEMA DE AUTENTICACIÓN & SESIONES PRO (INFALIBLE)
@@ -2867,7 +2867,7 @@
     };
 
 
-    var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
+    var API_BASE = (window.location.protocol === 'file:') ? 'http://127.0.0.1:8000' : '';
     let currentRole = "LIDER";
     let wmsInventory = [];
     let crmClients = [];
@@ -3219,7 +3219,7 @@
                 🏷️
               </button>
               ${currentRole === 'LIDER' ? `
-                <button onclick="eliminarProductoWms(${item.id}, '${item.nombre.replace(/'/g, "\'")}')" class="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-600 hover:text-white font-bold text-[10px] transition" title="Eliminar de Bodega">
+                <button onclick="eliminarProductoWms(${item.id})" class="px-2 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-600 hover:text-white font-bold text-[10px] transition" title="Eliminar de Bodega">
                   🗑️
                 </button>
               ` : ''}
@@ -3231,6 +3231,10 @@
     }
 
     async function eliminarProductoWms(prodId, nombre) {
+      if (!nombre) {
+        const prod = (wmsInventory || []).find(p => p.id === prodId);
+        nombre = prod ? prod.nombre : "este producto";
+      }
       if (currentRole !== 'LIDER') {
         alert("🔒 Acción denegada: Solo los usuarios con rol de LÍDER tienen autorización para eliminar productos de bodega.");
         return;
@@ -3722,7 +3726,7 @@
 
         if (res.ok) {
           const data = await res.json();
-          window.open(`${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${data.id || data.proforma_id}/pdf`, \'_blank\');
+          window.open(`${API_BASE}/api/facturas/${data.id || data.factura_id}/pdf`, '_blank');
           cart = [];
           clearDiscount();
           updateCartUI();
@@ -3848,7 +3852,7 @@
             </div>
           </div>
           <div class="flex justify-between items-center pt-3 border-t border-slate-800/80">
-            <a href="${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${p.id}/pdf" target="_blank" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-slate-950 text-xs text-cyan-300 font-extrabold flex items-center gap-1.5 transition border border-cyan-500/30">📄 Descargar PDF</a>
+            <a href="${API_BASE}/api/proformas/${p.id}/pdf" target="_blank" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 hover:text-slate-950 text-xs text-cyan-300 font-extrabold flex items-center gap-1.5 transition border border-cyan-500/30">📄 Descargar PDF</a>
             <span class="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">Pendiente</span>
           </div>
         `;
@@ -3924,7 +3928,7 @@
       if (res.ok) {
         const data = await res.json();
         closeModalCreateProforma();
-        window.open(`${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/proformas/${data.id || data.proforma_id}/pdf`, \'_blank\');
+        window.open(`${API_BASE}/api/proformas/${data.id || data.proforma_id}/pdf`, '_blank');
         cart = [];
         updateCartUI();
         await loadProformas();
@@ -5889,7 +5893,7 @@
           <td class="p-3 font-mono text-slate-400">CRC ${f.iva.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td class="p-3 font-mono font-bold text-white">CRC ${f.total.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
           <td class="p-3">
-            <a href="${(API_BASE||\'\').replace(/\/+$/, \'\')}/api/facturas/${f.id}/pdf" target="_blank" class="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition text-[11px] border border-red-500/30">📄 Ver PDF</a>
+            <a href="${API_BASE}/api/facturas/${f.id}/pdf" target="_blank" class="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 font-bold hover:bg-red-500 hover:text-white transition text-[11px] border border-red-500/30">📄 Ver PDF</a>
           </td>
         `;
         tbody.appendChild(tr);
