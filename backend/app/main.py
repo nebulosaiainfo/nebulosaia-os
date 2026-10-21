@@ -71,6 +71,7 @@ class DBConfiguracion(Base):
     moneda = Column(String(5), default="CRC")
     giro_comercial = Column(String(100), default="Comercio General / Retail")
     licencia_activa = Column(Boolean, default=True)
+    sistema_purgado = Column(Boolean, default=False)
 
 class DBProductoWMS(Base):
     __tablename__ = "productos_wms"
@@ -298,15 +299,61 @@ def check_sqlite_schema():
             conn.commit()
         except Exception:
             pass
+        try:
+            conn.execute(text("ALTER TABLE configuracion ADD COLUMN sistema_purgado BOOLEAN DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
 
 check_sqlite_schema()
+
+SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "False").lower() in ("true", "1")
 
 def seed_initial_data():
     db = SessionLocal()
     try:
-        if not db.query(DBConfiguracion).first():
-            db.add(DBConfiguracion())
+        config = db.query(DBConfiguracion).first()
+        if not config:
+            config = DBConfiguracion()
+            db.add(config)
             db.commit()
+            db.refresh(config)
+
+        # 1. Garantizar siempre el usuario maestro de Isaac Sanchez
+        isaac_user = db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username.ilike("isanchez")).first()
+        if not isaac_user:
+            isaac_user = DBUsuarioSistema(
+                username="isanchez",
+                nombre_completo="Isaac Sánchez (Dueño & Líder)",
+                rol="DUENO",
+                pin_seguridad="0409",
+                is_master=1,
+                activo=1,
+                password="password_master_seguro"
+            )
+            db.add(isaac_user)
+            db.commit()
+        else:
+            isaac_user.pin_seguridad = "0409"
+            isaac_user.is_master = 1
+            isaac_user.activo = 1
+            isaac_user.rol = "DUENO"
+            db.commit()
+
+        if db.query(DBUsuarioSistema).count() <= 1:
+            colaboradores = [
+                DBUsuarioSistema(username="bodega_carlos", nombre_completo="Carlos Méndez (Jefe de Bodega)", rol="JEFE_BODEGA", pin_seguridad="2244", is_master=0, activo=1),
+                DBUsuarioSistema(username="cajera_sofia", nombre_completo="Sofía Vargas (Vendedora & POS)", rol="VENDEDOR", pin_seguridad="1122", is_master=0, activo=1)
+            ]
+            for c in colaboradores:
+                if not db.query(DBUsuarioSistema).filter(DBUsuarioSistema.username == c.username).first():
+                    db.add(c)
+            db.commit()
+
+        # En modo producción limpio (default): NO sembrar registros demo
+        purgado_file = DATA_DIR / ".sistema_purgado"
+        if getattr(config, 'sistema_purgado', False) or purgado_file.exists() or not SEED_DEMO_DATA:
+            return
 
         if db.query(DBProductoWMS).count() == 0:
             productos_seed = [
@@ -2464,7 +2511,17 @@ def purgar_sistema_produccion(req: PurgeRequest, db: Session = Depends(get_db)):
         except Exception as e:
             print("Error purgar proveedores:", e)
 
-    # Asegurar que el usuario maestro del dueño esté intacto
+    # Marcar permanentemente el sistema como purgado para producción real
+    config = db.query(DBConfiguracion).first()
+    if config:
+        config.sistema_purgado = True
+
+    try:
+        purgado_file = DATA_DIR / ".sistema_purgado"
+        purgado_file.write_text("SISTEMA_PURGADO_MODO_PRODUCCION", encoding="utf-8")
+    except Exception:
+        pass
+
     db.commit()
 
     return {
