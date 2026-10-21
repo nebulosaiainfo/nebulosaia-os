@@ -154,6 +154,8 @@
       if (document.getElementById('tck-kpi-abiertos')) document.getElementById('tck-kpi-abiertos').textContent = abiertos;
       if (document.getElementById('tck-kpi-resueltos')) document.getElementById('tck-kpi-resueltos').textContent = resueltos;
       if (document.getElementById('tck-count-badge')) document.getElementById('tck-count-badge').textContent = filtered.length;
+      if (document.getElementById('badge-tickets-count')) document.getElementById('badge-tickets-count').textContent = abiertos;
+      if (document.getElementById('header-tickets-count')) document.getElementById('header-tickets-count').textContent = abiertos;
 
       if (filtered.length === 0) {
         container.innerHTML = `
@@ -375,9 +377,13 @@
           <input type="color" id="picker-secondary" value="#7000FF" onchange="updateThemeSecondary(this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="Color Secundario" />
         </div>
 
-        <!-- Botón de Tickets de Soporte -->
-        <button onclick="openModalTicket()" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-purple-300 flex items-center gap-1.5 transition">
-          <span>🎫 Reportar a Isaac</span>
+        <!-- Botón de Tickets / Buzón de Errores de Isaac -->
+        <button onclick="switchTab('tickets')" class="px-3.5 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/50 text-xs font-extrabold text-purple-300 flex items-center gap-2 transition shadow-lg shadow-purple-500/20" title="Ver bandeja de errores y problemas reportados">
+          <span>📥 Buzón de Errores</span>
+          <span id="header-tickets-count" class="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-mono text-[9px] font-bold animate-pulse">0</span>
+        </button>
+        <button onclick="openModalTicket()" class="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-400 font-bold flex items-center gap-1 transition" title="Crear nuevo reporte de prueba">
+          <span>+ Reportar</span>
         </button>
 
 
@@ -454,6 +460,10 @@
       </button>
       <button onclick="switchTab('usuarios')" id="tab-btn-usuarios" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap">
         👥 <span>11. Equipo & Permisos</span>
+      </button>
+      <button onclick="switchTab('tickets')" id="tab-btn-tickets" class="px-3.5 py-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/50 text-purple-300 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap shadow-lg shadow-purple-500/10">
+        🎫 <span>12. Buzón de Errores & Tickets</span>
+        <span id="badge-tickets-count" class="px-2 py-0.5 rounded-full bg-red-500 text-white font-mono text-[9px] font-extrabold animate-pulse">0</span>
       </button>
     </div>
 
