@@ -44,441 +44,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
-  <script>
-
-  // ========================================================
-  // 🌐 CONFIGURACIÓN GLOBAL DE API
-  // ========================================================
-  var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
-
-// ========================================================
-    // 🔐 SISTEMA DE AUTENTICACIÓN & SESIONES PRO
-    // ========================================================
-    let currentLoggedUser = null;
-
-    const DEFAULT_MODULES_CONFIG = [
-      { id: 'pos', name: 'Punto de Venta', icon: '🛒', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
-      { id: 'wms', name: 'Bodega & WMS', icon: '📦', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
-      { id: 'proformas', name: 'Proformas', icon: '📋', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
-      { id: 'apartados', name: 'Apartados & Cuotas', icon: '🗓️', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
-      { id: 'proveedores', name: 'Proveedores & Marcas', icon: '🏭', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
-      { id: 'gastos', name: 'Gastos de Tienda', icon: '🧾', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
-      { id: 'fiscal', name: 'Historial Facturas', icon: '💰', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
-      { id: 'crm', name: 'WhatsApp & CRM', icon: '💬', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
-      { id: 'ai', name: 'Auditoría IA', icon: '🧠', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
-      { id: 'usuarios', name: 'Equipo & Roles', icon: '👥', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
-      { id: 'custom', name: 'Configuración', icon: '⚙️', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true }
-    ];
-
-    let userModulesConfig = JSON.parse(localStorage.getItem('nebulosa_modules_config') || 'null');
-    if (!userModulesConfig || !Array.isArray(userModulesConfig)) {
-      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
-    }
-
-    async function ejecutarLogin(e) {
-      if (e) e.preventDefault();
-      let uInput = document.getElementById('login-username').value.trim();
-      let pInput = document.getElementById('login-password').value.trim();
-      const errBox = document.getElementById('login-error-msg');
-      const submitBtn = document.getElementById('btn-submit-login');
-
-      // Si el usuario puso solo el PIN en el campo de usuario o contraseña
-      if (!uInput && pInput) {
-        if (pInput === '7777' || pInput === 'admin') uInput = 'lider_isaac';
-        else uInput = pInput;
-      } else if (uInput && !pInput) {
-        if (uInput === '7777' || uInput === 'admin') {
-          pInput = uInput;
-          uInput = 'lider_isaac';
-        }
-      }
-
-      if (!uInput && !pInput) {
-        errBox.textContent = "Por favor ingresa tu usuario y contraseña o PIN (7777).";
-        errBox.classList.remove('hidden');
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = "<span>⏳ Verificando credenciales...</span>";
-      errBox.classList.add('hidden');
-
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: uInput, password_or_pin: pInput })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.status === 'success') {
-          currentLoggedUser = data.usuario;
-          localStorage.setItem('nebulosa_session', JSON.stringify(currentLoggedUser));
-          localStorage.setItem('nebulosa_token', data.token);
-
-          // Ocultar pantalla de login
-          document.getElementById('auth-login-screen').classList.add('hidden');
-
-          // Actualizar UI con perfil
-          actualizarPerfilHeader();
-          renderModularNav();
-
-          // Abrir primer módulo permitido
-          const primerModulo = userModulesConfig.find(m => m.enabled && m.roles.includes(currentLoggedUser.rol));
-          if (primerModulo) switchTab(primerModulo.id);
-        } else {
-          errBox.textContent = data.detail || "Usuario o clave incorrectos.";
-          errBox.classList.remove('hidden');
-        }
-      } catch (err) {
-        console.error("Error en login:", err);
-        errBox.textContent = "Error de conexión al servidor NEBULOSA.";
-        errBox.classList.remove('hidden');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = "<span>🚀 Ingresar al Sistema</span>";
-      }
-    }
-
-    function verificarSesionAlCargar() {
-      const sesionGuardada = localStorage.getItem('nebulosa_session');
-      const authScreen = document.getElementById('auth-login-screen');
-      if (sesionGuardada) {
-        try {
-          currentLoggedUser = JSON.parse(sesionGuardada);
-          if (authScreen) authScreen.classList.add('hidden');
-          actualizarPerfilHeader();
-          renderModularNav();
-          return;
-        } catch(e) {
-          localStorage.removeItem('nebulosa_session');
-        }
-      }
-      if (authScreen) authScreen.classList.remove('hidden');
-    }
-
-    function cerrarSesion() {
-      if (!confirm("¿Deseas cerrar tu sesión en NEBULOSA OS?")) return;
-      localStorage.removeItem('nebulosa_session');
-      localStorage.removeItem('nebulosa_token');
-      currentLoggedUser = null;
-      const authScreen = document.getElementById('auth-login-screen');
-      if (authScreen) {
-        document.getElementById('login-username').value = "";
-        document.getElementById('login-password').value = "";
-        authScreen.classList.remove('hidden');
-      }
-    }
-
-    function actualizarPerfilHeader() {
-      if (!currentLoggedUser) return;
-      const nameEl = document.getElementById('header-user-name');
-      const roleEl = document.getElementById('header-user-role');
-      const avatarEl = document.getElementById('user-avatar-circle');
-
-      if (nameEl) nameEl.textContent = currentLoggedUser.nombre_completo || currentLoggedUser.username;
-      if (roleEl) {
-        if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
-          roleEl.textContent = "👑 DUEÑO INTOCABLE";
-          roleEl.className = "text-[9px] text-amber-300 font-mono font-bold uppercase block";
-          if (avatarEl) {
-            avatarEl.innerHTML = "👑";
-            avatarEl.className = "w-6 h-6 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-amber-500/30";
-          }
-        } else {
-          roleEl.textContent = currentLoggedUser.rol;
-          roleEl.className = "text-[9px] text-cyan-300 font-mono font-bold uppercase block";
-          if (avatarEl) {
-            avatarEl.innerHTML = "👤";
-            avatarEl.className = "w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow";
-          }
-        }
-      }
-    }
-
-    // ========================================================
-    // 🧩 GESTOR DE MODULARIDAD & PRIORIDAD DE PESTAÑAS
-    // ========================================================
-    function renderModularNav() {
-      const container = document.getElementById('nav-modules-container');
-      if (!container) return;
-
-      const userRole = currentLoggedUser ? currentLoggedUser.rol : 'DUENO';
-      container.innerHTML = "";
-
-      userModulesConfig.forEach(mod => {
-        // Filtrar por rol y por estado habilitado
-        if (!mod.enabled) return;
-        if (userRole !== 'DUENO' && !mod.roles.includes(userRole)) return;
-
-        const btn = document.createElement('button');
-        btn.id = `tab-btn-${mod.id}`;
-        btn.onclick = () => switchTab(mod.id);
-        btn.className = "px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap";
-        btn.innerHTML = `<span>${mod.icon}</span> <span>${mod.name}</span>`;
-        container.appendChild(btn);
-      });
-    }
-
-    function abrirModalModular() {
-      const modal = document.getElementById('modal-organizar-modulos');
-      const lista = document.getElementById('lista-modulos-reordenar');
-      if (!modal || !lista) return;
-
-      lista.innerHTML = "";
-      userModulesConfig.forEach((mod, idx) => {
-        const item = document.createElement('div');
-        item.className = "flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800/80";
-        item.innerHTML = `
-          <div class="flex items-center gap-3">
-            <span class="text-base">${mod.icon}</span>
-            <div>
-              <strong class="text-white text-xs block">${mod.name}</strong>
-              <span class="text-[10px] text-slate-500 font-mono">${mod.roles.join(', ')}</span>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="moverModuloPrioridad(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▲</button>
-            <button onclick="moverModuloPrioridad(${idx}, 1)" ${idx === userModulesConfig.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▼</button>
-            <label class="relative inline-flex items-center cursor-pointer ml-2">
-              <input type="checkbox" ${mod.enabled ? 'checked' : ''} onchange="toggleModuloVisible(${idx}, this.checked)" class="sr-only peer">
-              <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-            </label>
-          </div>
-        `;
-        lista.appendChild(item);
-      });
-
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-
-    function cerrarModalModular() {
-      const modal = document.getElementById('modal-organizar-modulos');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    }
-
-    function moverModuloPrioridad(index, dir) {
-      const nuevoIndex = index + dir;
-      if (nuevoIndex < 0 || nuevoIndex >= userModulesConfig.length) return;
-      const [item] = userModulesConfig.splice(index, 1);
-      userModulesConfig.splice(nuevoIndex, 0, item);
-      abrirModalModular();
-    }
-
-    function toggleModuloVisible(index, checked) {
-      if (userModulesConfig[index]) {
-        userModulesConfig[index].enabled = checked;
-      }
-    }
-
-    function guardarPreferenciaModulos() {
-      localStorage.setItem('nebulosa_modules_config', JSON.stringify(userModulesConfig));
-      renderModularNav();
-      cerrarModalModular();
-      alert("✅ ¡Organización y prioridades de módulos guardadas exitosamente!");
-    }
-
-    function restablecerModulosDefecto() {
-      if (!confirm("¿Restablecer la barra de módulos al orden original?")) return;
-      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
-      localStorage.removeItem('nebulosa_modules_config');
-      abrirModalModular();
-      renderModularNav();
-    }
-
-    // ========================================================
-    // 👥 CREDENCIALES AUTOMÁTICAS & BLINDAJE DE DUEÑO
-    // ========================================================
-    let lastCreatedUserCreds = null;
-
-    function generarPassAleatorio() {
-      return "Neb-" + Math.floor(1000 + Math.random() * 9000);
-    }
-    function generarPinAleatorio() {
-      return "" + Math.floor(1000 + Math.random() * 9000);
-    }
-
-    function autoCompletarCredencialesModal() {
-      const passField = document.getElementById('nuevo-usuario-password');
-      const pinField = document.getElementById('nuevo-usuario-pin');
-      if (passField) passField.value = generarPassAleatorio();
-      if (pinField) pinField.value = generarPinAleatorio();
-    }
-
-    function cerrarModalCredenciales() {
-      const m = document.getElementById('modal-credenciales-creadas');
-      if (m) {
-        m.classList.add('hidden');
-        m.classList.remove('flex');
-      }
-    }
-
-    function copiarCredencialesAlPortapapeles() {
-      if (!lastCreatedUserCreds) return;
-      const texto = `🚀 *CREDENCIALES DE ACCESO - NEBULOSA OS*\n👤 *Nombre:* ${lastCreatedUserCreds.nombre}\n🔑 *Usuario:* ${lastCreatedUserCreds.usuario}\n🔒 *Contraseña:* ${lastCreatedUserCreds.password}\n⚡ *PIN de Caja/POS:* ${lastCreatedUserCreds.pin}\n💼 *Rol:* ${lastCreatedUserCreds.rol}\n🌐 *Enlace:* https://nebulosaia-os.onrender.com`;
-      navigator.clipboard.writeText(texto).then(() => {
-        alert("📋 ¡Credenciales copiadas al portapapeles listas para pegar en WhatsApp!");
-      });
-    }
-
-    function enviarCredencialesWhatsApp() {
-      if (!lastCreatedUserCreds) return;
-      const tel = prompt("Ingresa el número de WhatsApp del compañero (ej: 88887777):");
-      if (!tel) return;
-      const texto = `Hola ${lastCreatedUserCreds.nombre}! ⚡ Te compartimos tus accesos oficiales para *NEBULOSA OS*:\n\n👤 *Usuario:* ${lastCreatedUserCreds.usuario}\n🔒 *Contraseña:* ${lastCreatedUserCreds.password}\n⚡ *PIN Rápido:* ${lastCreatedUserCreds.pin}\n💼 *Rol:* ${lastCreatedUserCreds.rol}\n\n🌐 *Ingresa aquí:* https://nebulosaia-os.onrender.com`;
-      window.open(`https://api.whatsapp.com/send?phone=506${tel.trim()}&text=${encodeURIComponent(texto)}`, '_blank');
-    }
-
-
-    function autoGenerarCredencialesModal() {
-      const pinField = document.getElementById('usr-in-pin');
-      const passField = document.getElementById('usr-in-pass');
-      const userField = document.getElementById('usr-in-user');
-      const nombreField = document.getElementById('usr-in-nombre');
-
-      if (pinField) pinField.value = "" + Math.floor(1000 + Math.random() * 9000);
-      if (passField) passField.value = "Neb-" + Math.floor(1000 + Math.random() * 9000);
-      
-      if (nombreField && nombreField.value && userField && !userField.value) {
-        const pNombre = nombreField.value.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-        userField.value = pNombre + "_" + Math.floor(10 + Math.random() * 90);
-      }
-    }
-
-
-    function abrirModalWhatsAppDirecto(tel = '', nombre = '', tipo = 'ticket') {
-      const modal = document.getElementById('modal-whatsapp-directo');
-      const inTel = document.getElementById('wa-in-telefono');
-      if (inTel) inTel.value = tel.replace(/[^0-9]/g, '');
-      aplicarPlantillaWA(tipo, nombre);
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
-    }
-
-    function cerrarModalWhatsAppDirecto() {
-      const modal = document.getElementById('modal-whatsapp-directo');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    }
-
-    function aplicarPlantillaWA(tipo, nombre = 'Cliente') {
-      const txt = document.getElementById('wa-in-mensaje');
-      if (!txt) return;
-      if (tipo === 'ticket') {
-        txt.value = `¡Hola ${nombre}! 👋 Gracias por tu compra en *NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN* ⚡.\n\nAdjuntamos el detalle de tu compra.\n¡Ha sido un placer atenderte! 🚀`;
-      } else if (tipo === 'apartado') {
-        txt.value = `Estimado(a) ${nombre}, te saludamos de *NEBULOSA* ⚡.\n\nTe recordamos que tienes un apartado activo en nuestra tienda con saldo pendiente.\n¿Deseas cancelarlo por SINPE Móvil o visitarnos en tienda?`;
-      } else if (tipo === 'proforma') {
-        txt.value = `Hola ${nombre}, un gusto saludarte de *NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN* ⚡.\n\nTe compartimos la cotización solicitada formalmente. Quedamos a tu entera disposición para cualquier consulta.`;
-      }
-    }
-
-    function dispararWhatsAppWebDirecto() {
-      const tel = document.getElementById('wa-in-telefono').value.trim().replace(/[^0-9]/g, '');
-      const msg = document.getElementById('wa-in-mensaje').value.trim();
-      if (!tel) {
-        alert("Por favor ingresa un número de teléfono válido.");
-        return;
-      }
-      if (!msg) {
-        alert("Por favor escribe o selecciona un mensaje.");
-        return;
-      }
-      const fullPhone = tel.length === 8 ? `506${tel}` : tel;
-      const url = `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank');
-      cerrarModalWhatsAppDirecto();
-    }
-
-
-    // ========================================================
-    // 🔥 SISTEMA DE PURGA MAESTRA (SOLO DUEÑO)
-    // ========================================================
-    function abrirModalPurgaSistema() {
-      // Validar si el usuario actual es el Dueño
-      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
-      if (sesion.rol !== 'DUENO' && sesion.username !== 'lider_isaac' && !sesion.is_master) {
-        alert("🔒 ACCESO DENEGADO: Esta función es exclusiva para el Dueño & Líder del sistema.");
-        return;
-      }
-      const modal = document.getElementById('modal-purga-sistema');
-      const inPin = document.getElementById('purga-in-pin');
-      if (inPin) inPin.value = "";
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
-    }
-
-    function cerrarModalPurgaSistema() {
-      const modal = document.getElementById('modal-purga-sistema');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    }
-
-    async function ejecutarPurgaSistema() {
-      const inPin = document.getElementById('purga-in-pin').value.trim();
-      if (!inPin) {
-        alert("Por favor ingresa tu PIN Maestro para autorizar.");
-        return;
-      }
-
-      if (!confirm("⚠️ ¡ADVERTENCIA DEFINITIVA!\n\n¿Estás 100% seguro de que deseas vaciar todos los registros demo para dejar la tienda en blanco?\n\nEsta acción no se puede deshacer.")) {
-        return;
-      }
-
-      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
-      const uName = sesion.username || 'lider_isaac';
-
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/purgar-sistema`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pin_maestro: inPin,
-            usuario: uName,
-            purgar_wms: true,
-            purgar_ventas: true,
-            purgar_proformas: true,
-            purgar_apartados: true,
-            purgar_gastos: true,
-            purgar_compras: true,
-            purgar_crm: true,
-            purgar_proveedores: false
-          })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.status === 'success') {
-          cerrarModalPurgaSistema();
-          alert("🎉 ¡SISTEMA PURGADO CON ÉXITO!\n\nTodos los datos de prueba han sido eliminados.\nNEBULOSA OS está 100% limpio y listo para registrar mercadería y ventas reales.");
-          // Recargar todos los módulos en limpio
-          if (typeof loadWmsInventory === 'function') await loadWmsInventory();
-          if (typeof loadHistorialFacturas === 'function') await loadHistorialFacturas();
-          if (typeof loadProformas === 'function') await loadProformas();
-          if (typeof loadApartados === 'function') await loadApartados();
-          if (typeof loadGastos === 'function') await loadGastos();
-          if (typeof loadFinanzasResumen === 'function') await loadFinanzasResumen();
-          if (typeof switchTab === 'function') switchTab('wms');
-        } else {
-          alert("❌ Error: " + (data.detail || "PIN incorrecto o no autorizado."));
-        }
-      } catch (err) {
-        console.error("Error al purgar sistema:", err);
-        alert("Error de conexión al purgar el sistema.");
-      }
-    }
-  </script>
+  
 
 </head>
 <body class="min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black">
@@ -511,7 +77,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Usuario o Cédula</label>
           <div class="relative">
-            <input type="text" id="login-username" required placeholder="ej: lider_isaac o tu usuario"
+            <input type="text" id="login-username" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="ej: lider_isaac o tu usuario"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">👤</span>
           </div>
@@ -520,7 +86,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Contraseña o PIN Maestro</label>
           <div class="relative">
-            <input type="password" id="login-password" required placeholder="Contraseña o PIN (ej: 7777)"
+            <input type="password" id="login-password" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Contraseña o PIN (ej: 7777)"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">🔑</span>
           </div>
@@ -529,7 +95,7 @@
         <div id="login-error-msg" class="hidden p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center">
         </div>
 
-        <button type="submit" id="btn-submit-login"
+        <button type="button" onclick="ejecutarLogin(event)" id="btn-submit-login"
           class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-extrabold text-sm shadow-lg shadow-purple-600/30 transition flex items-center justify-center gap-2">
           <span>🚀 Ingresar al Sistema</span>
         </button>
@@ -2542,6 +2108,355 @@
   <!-- SCRIPT LOGIC JAVASCRIPT CONECTADO A FASTAPI -->
   <!-- ======================================================== -->
   <script>
+
+    // ========================================================
+    // 🌐 CONFIGURACIÓN GLOBAL DE API
+    // ========================================================
+    var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
+
+    // ========================================================
+    // 🔐 SISTEMA DE AUTENTICACIÓN & SESIONES PRO (INFALIBLE)
+    // ========================================================
+    let currentLoggedUser = null;
+
+    const DEFAULT_MODULES_CONFIG = [
+      { id: 'pos', name: 'Punto de Venta', icon: '🛒', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'wms', name: 'Bodega & WMS', icon: '📦', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
+      { id: 'proformas', name: 'Proformas', icon: '📋', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'apartados', name: 'Apartados & Cuotas', icon: '🗓️', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'proveedores', name: 'Proveedores & Marcas', icon: '🏭', roles: ['DUENO', 'ADMINISTRADOR', 'JEFE_BODEGA'], enabled: true },
+      { id: 'gastos', name: 'Gastos de Tienda', icon: '🧾', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'fiscal', name: 'Historial Facturas', icon: '💰', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'crm', name: 'WhatsApp & CRM', icon: '💬', roles: ['DUENO', 'ADMINISTRADOR', 'VENDEDOR'], enabled: true },
+      { id: 'ai', name: 'Auditoría IA', icon: '🧠', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'usuarios', name: 'Equipo & Roles', icon: '👥', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true },
+      { id: 'custom', name: 'Configuración', icon: '⚙️', roles: ['DUENO', 'ADMINISTRADOR'], enabled: true }
+    ];
+
+    let userModulesConfig = JSON.parse(localStorage.getItem('nebulosa_modules_config') || 'null');
+    if (!userModulesConfig || !Array.isArray(userModulesConfig)) {
+      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
+    }
+
+    window.ejecutarLogin = async function(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const uEl = document.getElementById('login-username');
+      const pEl = document.getElementById('login-password');
+      const errBox = document.getElementById('login-error-msg');
+      const submitBtn = document.getElementById('btn-submit-login');
+
+      let uInput = uEl ? uEl.value.trim() : '';
+      let pInput = pEl ? pEl.value.trim() : '';
+
+      // Fallback inteligente para acceso rápido por PIN
+      if (!uInput && pInput) {
+        if (pInput === '7777' || pInput === 'admin') uInput = 'lider_isaac';
+        else uInput = pInput;
+      } else if (uInput && !pInput) {
+        if (uInput === '7777' || uInput === 'admin') {
+          pInput = uInput;
+          uInput = 'lider_isaac';
+        }
+      }
+
+      if (!uInput && !pInput) {
+        if (errBox) {
+          errBox.textContent = "Por favor ingresa tu usuario y contraseña o tu PIN Maestro (7777).";
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "<span>⏳ Verificando credenciales...</span>";
+      }
+      if (errBox) errBox.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: uInput, password_or_pin: pInput })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          currentLoggedUser = data.usuario;
+          localStorage.setItem('nebulosa_session', JSON.stringify(currentLoggedUser));
+          localStorage.setItem('nebulosa_token', data.token);
+
+          // Ocultar pantalla de login de forma 100% garantizada
+          const authScreen = document.getElementById('auth-login-screen');
+          if (authScreen) {
+            authScreen.style.setProperty('display', 'none', 'important');
+            authScreen.classList.add('hidden');
+            authScreen.classList.remove('flex');
+          }
+
+          // Actualizar UI con perfil y módulos
+          try { actualizarPerfilHeader(); } catch(err) { console.error(err); }
+          try { renderModularNav(); } catch(err) { console.error(err); }
+
+          // Abrir primer módulo permitido
+          const primerModulo = userModulesConfig.find(m => m.enabled && m.roles.includes(currentLoggedUser.rol));
+          if (primerModulo && typeof switchTab === 'function') switchTab(primerModulo.id);
+          else if (typeof switchTab === 'function') switchTab('pos');
+        } else {
+          if (errBox) {
+            errBox.textContent = data.detail || "Usuario o PIN incorrectos.";
+            errBox.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error("Error en login:", err);
+        if (errBox) {
+          errBox.textContent = "Error al conectar con el servidor NEBULOSA.";
+          errBox.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = "<span>🚀 Ingresar al Sistema</span>";
+        }
+      }
+    };
+
+    window.verificarSesionAlCargar = function() {
+      const sesionGuardada = localStorage.getItem('nebulosa_session');
+      const authScreen = document.getElementById('auth-login-screen');
+      if (sesionGuardada) {
+        try {
+          currentLoggedUser = JSON.parse(sesionGuardada);
+          if (authScreen) {
+            authScreen.style.setProperty('display', 'none', 'important');
+            authScreen.classList.add('hidden');
+            authScreen.classList.remove('flex');
+          }
+          actualizarPerfilHeader();
+          renderModularNav();
+          return;
+        } catch(e) {
+          localStorage.removeItem('nebulosa_session');
+        }
+      }
+      if (authScreen) {
+        authScreen.style.removeProperty('display');
+        authScreen.classList.remove('hidden');
+        authScreen.classList.add('flex');
+      }
+    };
+
+    window.cerrarSesion = function() {
+      if (!confirm("¿Deseas cerrar tu sesión en NEBULOSA OS?")) return;
+      localStorage.removeItem('nebulosa_session');
+      localStorage.removeItem('nebulosa_token');
+      currentLoggedUser = null;
+      const authScreen = document.getElementById('auth-login-screen');
+      if (authScreen) {
+        const uEl = document.getElementById('login-username');
+        const pEl = document.getElementById('login-password');
+        if (uEl) uEl.value = "";
+        if (pEl) pEl.value = "";
+        authScreen.style.removeProperty('display');
+        authScreen.classList.remove('hidden');
+        authScreen.classList.add('flex');
+      }
+    };
+
+    window.actualizarPerfilHeader = function() {
+      if (!currentLoggedUser) return;
+      const nameEl = document.getElementById('header-user-name');
+      const roleEl = document.getElementById('header-user-role');
+      const avatarEl = document.getElementById('user-avatar-circle');
+
+      if (nameEl) nameEl.textContent = currentLoggedUser.nombre_completo || currentLoggedUser.username;
+      if (roleEl) {
+        if (currentLoggedUser.is_master || currentLoggedUser.rol === 'DUENO') {
+          roleEl.textContent = "👑 DUEÑO INTOCABLE";
+          roleEl.className = "text-[9px] text-amber-300 font-mono font-bold uppercase block";
+          if (avatarEl) {
+            avatarEl.innerHTML = "👑";
+            avatarEl.className = "w-6 h-6 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-amber-500/30";
+          }
+        } else {
+          roleEl.textContent = currentLoggedUser.rol;
+          roleEl.className = "text-[9px] text-cyan-300 font-mono font-bold uppercase block";
+          if (avatarEl) {
+            avatarEl.innerHTML = "👤";
+            avatarEl.className = "w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold shadow";
+          }
+        }
+      }
+    };
+
+    window.renderModularNav = function() {
+      const container = document.getElementById('nav-modules-container');
+      if (!container) return;
+
+      const userRole = currentLoggedUser ? currentLoggedUser.rol : 'DUENO';
+      container.innerHTML = "";
+
+      userModulesConfig.forEach(mod => {
+        if (!mod.enabled) return;
+        if (userRole !== 'DUENO' && !mod.roles.includes(userRole)) return;
+
+        const btn = document.createElement('button');
+        btn.id = `tab-btn-${mod.id}`;
+        btn.onclick = () => switchTab(mod.id);
+        btn.className = "px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-bold text-xs flex items-center gap-2 transition whitespace-nowrap";
+        btn.innerHTML = `<span>${mod.icon}</span> <span>${mod.name}</span>`;
+        container.appendChild(btn);
+      });
+    };
+
+    window.abrirModalModular = function() {
+      const modal = document.getElementById('modal-organizar-modulos');
+      const lista = document.getElementById('lista-modulos-reordenar');
+      if (!modal || !lista) return;
+
+      lista.innerHTML = "";
+      userModulesConfig.forEach((mod, idx) => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800/80";
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="text-base">${mod.icon}</span>
+            <div>
+              <strong class="text-white text-xs block">${mod.name}</strong>
+              <span class="text-[10px] text-slate-500 font-mono">${mod.roles.join(', ')}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="moverModuloPrioridad(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▲</button>
+            <button onclick="moverModuloPrioridad(${idx}, 1)" ${idx === userModulesConfig.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white text-xs font-bold transition">▼</button>
+            <label class="relative inline-flex items-center cursor-pointer ml-2">
+              <input type="checkbox" ${mod.enabled ? 'checked' : ''} onchange="toggleModuloVisible(${idx}, this.checked)" class="sr-only peer">
+              <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+        `;
+        lista.appendChild(item);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.cerrarModalModular = function() {
+      const modal = document.getElementById('modal-organizar-modulos');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+
+    window.moverModuloPrioridad = function(index, dir) {
+      const nuevoIndex = index + dir;
+      if (nuevoIndex < 0 || nuevoIndex >= userModulesConfig.length) return;
+      const [item] = userModulesConfig.splice(index, 1);
+      userModulesConfig.splice(nuevoIndex, 0, item);
+      abrirModalModular();
+    };
+
+    window.toggleModuloVisible = function(index, checked) {
+      if (userModulesConfig[index]) userModulesConfig[index].enabled = checked;
+    };
+
+    window.guardarPreferenciaModulos = function() {
+      localStorage.setItem('nebulosa_modules_config', JSON.stringify(userModulesConfig));
+      renderModularNav();
+      cerrarModalModular();
+      alert("✅ ¡Organización y prioridades de módulos guardadas exitosamente!");
+    };
+
+    window.restablecerModulosDefecto = function() {
+      if (!confirm("¿Restablecer la barra de módulos al orden original?")) return;
+      userModulesConfig = JSON.parse(JSON.stringify(DEFAULT_MODULES_CONFIG));
+      localStorage.removeItem('nebulosa_modules_config');
+      abrirModalModular();
+      renderModularNav();
+    };
+
+    // ========================================================
+    // 🔥 PURGA MAESTRA (SOLO DUEÑO CON PIN 7777)
+    // ========================================================
+    window.abrirModalPurgaSistema = function() {
+      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
+      if (sesion.rol !== 'DUENO' && sesion.username !== 'lider_isaac' && !sesion.is_master) {
+        alert("🔒 ACCESO DENEGADO: Esta función es exclusiva para el Dueño & Líder del sistema.");
+        return;
+      }
+      const modal = document.getElementById('modal-purga-sistema');
+      const inPin = document.getElementById('purga-in-pin');
+      if (inPin) inPin.value = "";
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    };
+
+    window.cerrarModalPurgaSistema = function() {
+      const modal = document.getElementById('modal-purga-sistema');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    };
+
+    window.ejecutarPurgaSistema = async function() {
+      const inPin = document.getElementById('purga-in-pin').value.trim();
+      if (!inPin) {
+        alert("Por favor ingresa tu PIN Maestro para autorizar.");
+        return;
+      }
+
+      if (!confirm("⚠️ ¡ADVERTENCIA DEFINITIVA!\n\n¿Estás 100% seguro de que deseas vaciar todos los registros demo para dejar la tienda en blanco?\n\nEsta acción no se puede deshacer.")) {
+        return;
+      }
+
+      const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
+      const uName = sesion.username || 'lider_isaac';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/purgar-sistema`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pin_maestro: inPin,
+            usuario: uName,
+            purgar_wms: true,
+            purgar_ventas: true,
+            purgar_proformas: true,
+            purgar_apartados: true,
+            purgar_gastos: true,
+            purgar_compras: true,
+            purgar_crm: true,
+            purgar_proveedores: false
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          cerrarModalPurgaSistema();
+          alert("🎉 ¡SISTEMA PURGADO CON ÉXITO!\n\nTodos los datos de prueba han sido eliminados.\nNEBULOSA OS está 100% limpio y listo para registrar mercadería y ventas reales.");
+          if (typeof loadWmsInventory === 'function') await loadWmsInventory();
+          if (typeof loadHistorialFacturas === 'function') await loadHistorialFacturas();
+          if (typeof loadProformas === 'function') await loadProformas();
+          if (typeof loadApartados === 'function') await loadApartados();
+          if (typeof loadGastos === 'function') await loadGastos();
+          if (typeof loadFinanzasResumen === 'function') await loadFinanzasResumen();
+          if (typeof switchTab === 'function') switchTab('wms');
+        } else {
+          alert("❌ Error: " + (data.detail || "PIN incorrecto o no autorizado."));
+        }
+      } catch (err) {
+        console.error("Error al purgar sistema:", err);
+        alert("Error de conexión al purgar el sistema.");
+      }
+    };
+
+
     var API_BASE = window.API_BASE || (window.location.protocol.startsWith('http') && window.location.origin && window.location.origin !== 'null') ? window.location.origin : "http://127.0.0.1:8000";
     let currentRole = "LIDER";
     let wmsInventory = [];
