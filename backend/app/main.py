@@ -127,6 +127,10 @@ class DBFactura(Base):
     items_json = Column(Text, default="[]")
     pdf_ruta = Column(String(255), nullable=True)
 
+    @property
+    def comprobante_sinpe(self):
+        return self.numero_comprobante or ''
+
 class DBProformaSeguimiento(Base):
     __tablename__ = "proformas_seguimiento"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -1413,7 +1417,7 @@ def resolver_ruta_pdf_factura(fac, db: Session) -> str:
         "moneda": "CRC",
         "vendedor_nombre": fac.vendedor_nombre or "Vendedor",
         "metodo_pago": fac.metodo_pago or "EFECTIVO",
-        "comprobante_banco": fac.comprobante_sinpe or "N/A",
+        "comprobante_banco": getattr(fac, "numero_comprobante", None) or getattr(fac, "comprobante_sinpe", None) or "N/A",
         "tienda": {
             "nombre": config.nombre_tienda if config else "NEBULOSA INGENIERÍA Y AUTOMATIZACIÓN",
             "cedula": config.cedula_fiscal if config else "3-101-948271",
