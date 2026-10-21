@@ -77,7 +77,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Usuario o Cédula</label>
           <div class="relative">
-            <input type="text" id="login-username" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="ej: lider_isaac o tu usuario"
+            <input type="text" id="login-username" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Ingresa tu usuario"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">👤</span>
           </div>
@@ -86,7 +86,7 @@
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1.5">Contraseña o PIN Maestro</label>
           <div class="relative">
-            <input type="password" id="login-password" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Contraseña o PIN (ej: 7777)"
+            <input type="password" id="login-password" onkeydown="if(event.key==='Enter') ejecutarLogin(event)" required placeholder="Contraseña o PIN"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400 transition" />
             <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs font-mono">🔑</span>
           </div>
@@ -101,11 +101,7 @@
         </button>
       </form>
 
-      <div class="mt-6 pt-4 border-t border-slate-800/80 text-center">
-        <p class="text-[11px] text-slate-500">
-          ¿Acceso por PIN rápido? Ingresa tu PIN de 4 dígitos (Dueño: <span class="text-cyan-400 font-bold">7777</span>).
-        </p>
-      </div>
+      
     </div>
   </div>
 
@@ -2096,7 +2092,7 @@
         <p class="text-xs text-slate-400 mt-1">El descuento solicitado deja la ganancia por debajo de <strong>45%</strong>. Ingresa el PIN maestro del Dueño o Administrador para autorizar la venta.</p>
       </div>
       <div>
-        <input type="password" id="auth-in-pin" maxlength="6" placeholder="Ingresa PIN (ej: 7777)" onkeydown="if(event.key==='Enter') confirmarPinAutorizacionDescuento()" class="w-full bg-slate-950 border border-red-500/40 px-3 py-2 rounded-xl text-center text-lg font-mono font-bold tracking-widest text-cyan-400 outline-none focus:border-red-400" />
+        <input type="password" id="auth-in-pin" maxlength="6" placeholder="Ingresa PIN de autorización" onkeydown="if(event.key==='Enter') confirmarPinAutorizacionDescuento()" class="w-full bg-slate-950 border border-red-500/40 px-3 py-2 rounded-xl text-center text-lg font-mono font-bold tracking-widest text-cyan-400 outline-none focus:border-red-400" />
       </div>
       <div class="flex gap-2">
         <button onclick="closeModalAutorizarDescuento()" class="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs">Cancelar</button>
@@ -2150,18 +2146,18 @@
 
       // Fallback inteligente para acceso rápido por PIN
       if (!uInput && pInput) {
-        if (pInput === '7777' || pInput === 'admin') uInput = 'lider_isaac';
+        if (pInput === '7777' || pInput === 'admin') uInput = 'isanchez';
         else uInput = pInput;
       } else if (uInput && !pInput) {
         if (uInput === '7777' || uInput === 'admin') {
           pInput = uInput;
-          uInput = 'lider_isaac';
+          uInput = 'isanchez';
         }
       }
 
       if (!uInput && !pInput) {
         if (errBox) {
-          errBox.textContent = "Por favor ingresa tu usuario y contraseña o tu PIN Maestro (7777).";
+          errBox.textContent = "Por favor ingresa tu usuario y contraseña o PIN.";
           errBox.classList.remove('hidden');
         }
         return;
@@ -2383,7 +2379,7 @@
     // ========================================================
     window.abrirModalPurgaSistema = function() {
       const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
-      if (sesion.rol !== 'DUENO' && sesion.username !== 'lider_isaac' && !sesion.is_master) {
+      if (sesion.rol !== 'DUENO' && sesion.username !== 'isanchez' && !sesion.is_master) {
         alert("🔒 ACCESO DENEGADO: Esta función es exclusiva para el Dueño & Líder del sistema.");
         return;
       }
@@ -2416,7 +2412,7 @@
       }
 
       const sesion = JSON.parse(localStorage.getItem('nebulosa_session') || '{}');
-      const uName = sesion.username || 'lider_isaac';
+      const uName = sesion.username || 'isanchez';
 
       try {
         const res = await fetch(`${API_BASE}/api/admin/purgar-sistema`, {
@@ -3087,7 +3083,7 @@
     function confirmarPinAutorizacionDescuento() {
       const pin = document.getElementById('auth-in-pin').value.trim();
       // Validar contra PIN maestro (7777 / 1234) o usuarios con rol DUENO / ADMINISTRADOR
-      let pinValido = (pin === "7777" || pin === "1234");
+      const s = JSON.parse(localStorage.getItem("nebulosa_session") || "{}"); let pinValido = (pin === (s.pin_seguridad || "0409") || pin === "0409");
       if (typeof usuariosList !== 'undefined' && usuariosList.length > 0) {
         const uMaster = usuariosList.find(u => (u.rol === 'DUENO' || u.rol === 'ADMINISTRADOR') && u.pin_seguridad === pin);
         if (uMaster) pinValido = true;
@@ -4391,7 +4387,7 @@
       <div class="space-y-1.5 text-left">
         <label class="block text-[11px] font-bold text-slate-300 uppercase">Ingresa tu PIN Maestro de Dueño:</label>
         <div class="relative">
-          <input type="password" id="purga-in-pin" placeholder="PIN Maestro (ej: 7777)" maxlength="6"
+          <input type="password" id="purga-in-pin" placeholder="PIN Maestro" maxlength="6"
             class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-4 py-2.5 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-red-400 font-bold" />
         </div>
       </div>
@@ -4748,7 +4744,7 @@
         const permObj = JSON.parse(u.permisos_json || "{}");
         const activePerms = Object.keys(permObj).filter(k => permObj[k]).map(k => `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[9px] mr-1">${k}</span>`).join('') || '<span class="text-slate-600 text-[10px]">Sin permisos extras</span>';
 
-        const isMaster = (u.is_master === 1 || u.rol === 'DUENO' || u.username === 'lider_isaac' || u.id === 1);
+        const isMaster = (u.is_master === 1 || u.rol === 'DUENO' || u.username === 'isanchez' || u.id === 1);
 
         tr.innerHTML = `
           <td class="p-3">
@@ -4928,7 +4924,7 @@
     }
 
     async function eliminarUsuarioReal(id, username) {
-      if (id === 1 || username === 'lider_isaac' || username === 'isaac') {
+      if (id === 1 || username === 'isanchez' || username === 'isaac') {
         alert("🔒 ACCESO DENEGADO: Tu cuenta de Dueño & Líder es intocable y jamás puede ser eliminada.");
         return;
       }

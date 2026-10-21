@@ -745,7 +745,7 @@ def login_usuario(req: LoginRequest, db: Session = Depends(get_db)):
         valido = True
     elif getattr(usuario, 'password', None) and p_clean == str(usuario.password).strip():
         valido = True
-    elif p_clean in ["7777", "admin", "1234"] and (usuario.rol == "DUENO" or getattr(usuario, "is_master", 0) == 1):
+    elif getattr(usuario, "is_master", 0) == 1 and p_clean == str(usuario.pin_seguridad).strip():
         valido = True
         
     if not valido:
@@ -817,7 +817,7 @@ def actualizar_usuario(u_id: int, u: UsuarioSistemaCreate, db: Session = Depends
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     # Blindaje del usuario maestro
-    if getattr(item, "is_master", 0) == 1 or item.id == 1 or item.username in ["lider_isaac", "isaac"]:
+    if getattr(item, "is_master", 0) == 1 or item.id == 1 or item.username in ["isanchez", "lider_isaac", "isaac"]:
         item.nombre_completo = u.nombre_completo
         if u.pin_seguridad:
             item.pin_seguridad = u.pin_seguridad
@@ -847,7 +847,7 @@ def eliminar_usuario(u_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     # Blindaje estricto del usuario del dueño
-    if getattr(item, 'is_master', 0) == 1 or item.id == 1 or item.rol == 'DUENO' or item.username in ['lider_isaac', 'isaac']:
+    if getattr(item, 'is_master', 0) == 1 or item.id == 1 or item.rol == 'DUENO' or item.username in ['isanchez', 'lider_isaac', 'isaac']:
         raise HTTPException(
             status_code=403, 
             detail="ACCESO DENEGADO: El usuario Maestro/Dueño de NEBULOSA es intocable y NO puede ser eliminado."
@@ -2015,22 +2015,19 @@ class PurgeRequest(BaseModel):
 @app.post("/api/admin/purgar-sistema")
 def purgar_sistema_produccion(req: PurgeRequest, db: Session = Depends(get_db)):
     # 1. Validar autorización estricta del dueño
-    pin_valido = req.pin_maestro.strip() in ["7777", "admin"]
-    u_valido = req.usuario.strip().lower() in ["lider_isaac", "isaac", "admin"]
-    
-    # Validar también contra la base de datos si existe el usuario maestro
     master_user = db.query(DBUsuarioSistema).filter(
-        (DBUsuarioSistema.username.ilike(req.usuario.strip())) | (DBUsuarioSistema.is_master == 1)
+        (DBUsuarioSistema.is_master == 1) | (DBUsuarioSistema.username.ilike("isanchez")) | (DBUsuarioSistema.rol == "DUENO")
     ).first()
-    
+
+    pin_valido = False
     if master_user and master_user.pin_seguridad:
         if req.pin_maestro.strip() == str(master_user.pin_seguridad).strip():
             pin_valido = True
 
-    if not (pin_valido and (u_valido or (master_user and master_user.rol == "DUENO"))):
+    if not pin_valido:
         raise HTTPException(
             status_code=403, 
-            detail="ACCESO DENEGADO: Solo el Dueño con el PIN Maestro (7777) puede purgar el sistema."
+            detail="ACCESO DENEGADO: PIN Maestro incorrecto o usuario no autorizado."
         )
 
     from sqlalchemy import text
